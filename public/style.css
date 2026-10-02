@@ -1,13 +1,36 @@
-body{font-family:system-ui,Arial;margin:0;background:#0b0b12;color:#eee}
-header{padding:16px;background:#151527;position:sticky;top:0}
-h1{margin:0 0 8px}
-nav button{margin:4px;padding:8px 12px;border:0;border-radius:8px;background:#2a2a4a;color:#fff;cursor:pointer}
-nav button.active{background:#7c3aed}
-#search{margin-top:8px;padding:8px;width:280px;border-radius:8px;border:0}
-main{display:grid;grid-template-columns:2fr 1fr;gap:16px;padding:16px}
-.tier{margin-bottom:12px;background:#151527;border-radius:10px;padding:10px}
-.tier h3{margin:0 0 8px}
-.pill{display:inline-block;margin:4px;padding:6px 10px;background:#22223f;border-radius:20px}
-.pill small{opacity:.7;margin-left:6px}
-#profile{background:#151527;border-radius:10px;padding:12px;height:fit-content}
-@media(max-width:800px){main{grid-template-columns:1fr}}
+:root {
+  --bg: #08070f;
+  --bg2: #0e0c1b;
+  --card: #121128;
+  --primary: #9b7bff;
+  --text: #e8e8f2;
+  --sub: #a9a9c9;
+  --ok: #22c55e;
+  --border: rgba(255,255,255,0.08);
+}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(1200px 700px at 50% 0%,#101032 0%,#08070f 80%);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,rgba(8,7,15,.95),rgba(8,7,15,.6) 70%,transparent);backdrop-filter:blur(6px);padding:28px 20px 12px;display:flex;flex-direction:column;align-items:center;gap:18px;border-bottom:1px solid var(--border)}
+header h1{margin:0;font-size:44px;letter-spacing:1px;text-shadow:0 0 40px rgba(155,123,255,.35)}
+nav{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;padding:6px 8px;background:rgba(18,17,40,.6);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 40px -20px rgba(155,123,255,.5)}
+nav button{padding:8px 16px;border-radius:10px;border:0;background:transparent;color:var(--sub);cursor:pointer;font-weight:600;transition:.15s}
+nav button:hover{color:var(--text);background:rgba(255,255,255,.08)}
+nav button.active{color:#fff;background:linear-gradient(135deg,#9b7bff,#7c3aed);box-shadow:0 10px 40px -20px #7c3aed}
+#search{width:min(640px,92vw);padding:12px 16px;border-radius:12px;border:1px solid var(--border);background:rgba(18,17,40,.7);color:var(--text);outline:none;box-shadow:0 10px 60px -30px rgba(155,123,255,.8)}
+main{max-width:1200px;margin:0 auto;padding:20px 20px 60px;display:grid;grid-template-columns:2.5fr 1fr;gap:24px}
+#board{display:flex;flex-direction:column;gap:20px}
+.tier{background:linear-gradient(180deg,rgba(18,17,40,.92),rgba(18,17,40,.82));border:1px solid var(--border);border-radius:16px;box-shadow:0 20px 80px -40px rgba(155,123,255,.6);overflow:hidden;transition:.2s}
+.tier:hover{transform:translateY(-1px);box-shadow:0 24px 90px -40px rgba(155,123,255,.7)}
+.tier h3{margin:0;padding:14px 18px;background:linear-gradient(90deg,rgba(155,123,255,.25),transparent);border-bottom:1px solid var(--border);font-size:20px;letter-spacing:.5px}
+.tier-players{display:flex;flex-wrap:wrap;gap:10px;padding:16px 18px}
+.pill{position:relative;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--border);cursor:pointer;transition:.15s;will-change:transform}
+.pill:hover{transform:translateY(-1px);background:rgba(255,255,255,.1);box-shadow:0 8px 40px -20px #7c3aed}
+.pill small{color:var(--sub);margin-left:6px}
+.rank{margin-right:6px;font-weight:700;color:var(--primary)}
+#profile{position:sticky;top:160px;height:fit-content;background:linear-gradient(180deg,rgba(18,17,40,.96),rgba(18,17,40,.88));border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 20px 80px -40px rgba(155,123,255,.6)}
+#profile h3{margin:0 0 10px;font-size:22px}
+.profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:10px 0 14px}
+.stat{padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.05);text-align:center}
+.stat .v{font-size:20px;font-weight:800;color:#fff}
+.stat .k{font-size:12px;color:var(--sub);text-transform:uppercase}
+#profile small{color:var(--sub)}
+@media(max-width:900px){main{grid-template-columns:1fr}#profile{position:static}}
