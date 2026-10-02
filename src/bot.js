@@ -9,17 +9,16 @@ import { db, upsertPlayer, logTest, getProfile } from "./db.js";
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
-const GUILD_ID = process.env.DISCORD_GUILD_ID; // opcional: para registro rapido guild
+const GUILD_ID = process.env.DISCORD_GUILD_ID;
 const RESULTS_CHANNEL_ID = process.env.RESULTS_CHANNEL_ID || "";
-const REQUEST_CHANNEL_ID = process.env.REQUEST_CHANNEL_ID || "";
 
 let queueOpen = true;
-const activeTesters = new Set(); // discord user ids
+const activeTesters = new Set();
 
 async function mojangUUID(ign) {
   const r = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(ign)}`);
   if (!r.ok) return null;
-  return r.json(); // {id, name}
+  return r.json();
 }
 
 export function createBot() {
@@ -27,7 +26,7 @@ export function createBot() {
     console.log("[bot] DISCORD_TOKEN no configurado, bot desactivado (web sigue funcionando).");
     return null;
   }
-  const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+  const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
   client.once("ready", () => console.log(`[bot] GalaxyTierlist online como ${client.user.tag}`));
 
@@ -113,9 +112,8 @@ async function handleSlash(it) {
     if (!row) return it.reply({ content: "Cola vacía.", ephemeral: true });
     db.prepare("DELETE FROM queue WHERE id=?").run(row.id);
     const ch = await it.guild.channels.create({ name: `test-${row.ign}-${row.gamemode}`, reason: "GalaxyTierlist test" }).catch(()=>null);
-    const msg = `🎫 Test: **${row.ign}** (${row.gamemode} / ${row.region}) testeado por ${it.user}. Usa \`/close jugador:@${it.user.username} gamemode:${row.gamemode} tier:HT3\``;
-    if (ch) await ch.send(`${row.discord_id ? `<@${row.discord_id}>` : row.ign} ${msg}`);
-    return it.reply({ content: `Siguiente: **${row.ign}** [${row.gamemode}/${row.region}] ${ch ? `-> ${ch}` : ""}`, ephemeral: false });
+    if (ch) await ch.send(`${row.discord_id ? `<@${row.discord_id}>` : row.ign}, eres el siguiente.`);
+    return it.reply({ content: `Siguiente: **${row.ign}** [${row.gamemode}/${row.region}] ${ch ? `-> ${ch}` : ""}` });
   }
   if (commandName === "close" || commandName === "result") {
     let ign, mode, tier, tester = it.user.id, notes = "";
@@ -123,10 +121,8 @@ async function handleSlash(it) {
       const user = it.options.getUser("jugador");
       mode = it.options.getString("gamemode"); tier = it.options.getString("tier");
       notes = it.options.getString("notas") ?? "";
-      // intenta resolver IGN por discord_id en players o queue; si no, usa username
       const linked = user ? db.prepare("SELECT name FROM players WHERE discord_id=?").get(user.id) : null;
       ign = linked?.name ?? user?.username ?? "unknown";
-      if (user) tester = it.user.id;
     } else {
       ign = it.options.getString("ign"); mode = it.options.getString("gamemode"); tier = it.options.getString("tier");
     }
@@ -136,7 +132,7 @@ async function handleSlash(it) {
       const rc = await it.guild.channels.fetch(RESULTS_CHANNEL_ID).catch(()=>null);
       if (rc?.isTextBased()) await rc.send({ embeds: [embed] });
     }
-    return it.reply({ embeds: [embed], content: `🌐 Ya visible en la web: /?player=${encodeURIComponent(ign)}` });
+    return it.reply({ embeds: [embed], content: `🌐 Visible: /?player=${encodeURIComponent(ign)}` });
   }
   if (commandName === "skip") {
     const user = it.options.getUser("jugador");
@@ -154,7 +150,7 @@ async function handleSlash(it) {
     const ign = it.options.getString("ign");
     db.prepare("DELETE FROM tests WHERE tested_name=?").run(ign);
     db.prepare("DELETE FROM players WHERE name=?").run(ign);
-    return it.reply(`🧹 Tiers de **${ign}** borrados (web actualizada).`);
+    return it.reply(`🧹 Tiers de **${ign}** borrados.`);
   }
 }
 
@@ -167,13 +163,11 @@ async function handleButton(it) {
     return it.showModal(modal);
   }
   if (it.customId === "waitlist") {
-    if (!queueOpen) return it.reply({ content: "Cola cerrada por ahora.", ephemeral: true });
+    if (!queueOpen) return it.reply({ content: "Cola cerrada.", ephemeral: true });
     const player = db.prepare("SELECT * FROM players WHERE discord_id=?").get(it.user.id);
-    if (!player) return it.reply({ content: "Primero verifica tu cuenta con **Verify Account**.", ephemeral: true });
-    const selMode = new StringSelectMenuBuilder().setCustomId("selMode").setPlaceholder("Elige gamemode")
-      .addOptions(GAMEMODES.map(g=>({label:g.name,value:g.key,emoji:g.icon})));
-    const selRegion = new StringSelectMenuBuilder().setCustomId("selRegion").setPlaceholder("Elige región")
-      .addOptions(REGIONS.map(r=>({label:r,value:r})));
+    if (!player) return it.reply({ content: "Primero verifica con Verify Account.", ephemeral: true });
+    const selMode = new StringSelectMenuBuilder().setCustomId("selMode").setPlaceholder("Elige gamemode").addOptions(GAMEMODES.map(g=>({label:g.name,value:g.key,emoji:g.icon})));
+    const selRegion = new StringSelectMenuBuilder().setCustomId("selRegion").setPlaceholder("Elige región").addOptions(REGIONS.map(r=>({label:r,value:r})));
     return it.reply({ content: "Elige modo y región:", components: [new ActionRowBuilder().addComponents(selMode), new ActionRowBuilder().addComponents(selRegion)], ephemeral: true });
   }
   if (it.customId === "leave") {
@@ -182,7 +176,7 @@ async function handleButton(it) {
   }
   if (it.customId === "cooldown") {
     const last = db.prepare("SELECT timestamp FROM tests WHERE tested_name IN (SELECT name FROM players WHERE discord_id=?) ORDER BY timestamp DESC LIMIT 1").get(it.user.id);
-    if (!last) return it.reply({ content: "Sin cooldown, puedes entrar a la cola.", ephemeral: true });
+    if (!last) return it.reply({ content: "Sin cooldown.", ephemeral: true });
     return it.reply({ content: `Último test: <t:${Math.floor(last.timestamp/1000)}:R>`, ephemeral: true });
   }
 }
@@ -192,13 +186,13 @@ async function handleModal(it) {
     const ign = it.fields.getTextInputValue("ign").trim();
     const region = (it.fields.getTextInputValue("region") || "NA").trim().toUpperCase();
     const m = await mojangUUID(ign).catch(()=>null);
-    if (!m) return it.reply({ content: `❌ IGN **${ign}** no existe en Mojang. Revisa el nombre.`, ephemeral: true });
+    if (!m) return it.reply({ content: `❌ IGN **${ign}** no existe.`, ephemeral: true });
     upsertPlayer({ uuid: m.id, name: m.name, discord_id: it.user.id, region: REGIONS.includes(region) ? region : "NA" });
-    return it.reply({ content: `✅ Verificado: **${m.name}** (${region}). Ahora pulsa **Enter Waitlist**.`, ephemeral: true });
+    return it.reply({ content: `✅ Verificado: **${m.name}** (${region}).`, ephemeral: true });
   }
 }
 
-const pendingSel = new Map(); // userId -> {mode, region}
+const pendingSel = new Map();
 async function handleSelect(it) {
   const uid = it.user.id;
   const cur = pendingSel.get(uid) ?? {};
@@ -211,7 +205,7 @@ async function handleSelect(it) {
     const exists = db.prepare("SELECT * FROM queue WHERE discord_id=? AND gamemode=?").get(uid, cur.mode);
     if (!exists) db.prepare("INSERT INTO queue (discord_id, ign, gamemode, region, created) VALUES (?,?,?,?,?)").run(uid, player.name, cur.mode, cur.region, Date.now());
     const pos = db.prepare("SELECT COUNT(*) as c FROM queue WHERE gamemode=?").get(cur.mode).c;
-    return it.update({ content: `✅ En cola: **${player.name}** [${cur.mode}/${cur.region}] — posición aprox en ese modo: **#${pos}**`, components: [] });
+    return it.update({ content: `✅ En cola: **${player.name}** [${cur.mode}/${cur.region}] — #${pos}`, components: [] });
   }
-  return it.reply({ content: `Elegido: **${it.values[0]}**. Elige el otro campo.`, ephemeral: true });
+  return it.reply({ content: `Elegido: **${it.values[0]}**.`, ephemeral: true });
 }
