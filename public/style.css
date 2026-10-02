@@ -1,0 +1,13 @@
+body{font-family:system-ui,Arial;margin:0;background:#0b0b12;color:#eee}
+header{padding:16px;background:#151527;position:sticky;top:0}
+h1{margin:0 0 8px}
+nav button{margin:4px;padding:8px 12px;border:0;border-radius:8px;background:#2a2a4a;color:#fff;cursor:pointer}
+nav button.active{background:#7c3aed}
+#search{margin-top:8px;padding:8px;width:280px;border-radius:8px;border:0}
+main{display:grid;grid-template-columns:2fr 1fr;gap:16px;padding:16px}
+.tier{margin-bottom:12px;background:#151527;border-radius:10px;padding:10px}
+.tier h3{margin:0 0 8px}
+.pill{display:inline-block;margin:4px;padding:6px 10px;background:#22223f;border-radius:20px}
+.pill small{opacity:.7;margin-left:6px}
+#profile{background:#151527;border-radius:10px;padding:12px;height:fit-content}
+@media(max-width:800px){main{grid-template-columns:1fr}}

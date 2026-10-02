@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: galaxytierlist
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_GUILD_ID
+        sync: false
+      - key: RESULTS_CHANNEL_ID
+        sync: false
