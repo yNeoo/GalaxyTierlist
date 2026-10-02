@@ -3,8 +3,8 @@ let modes = [];
 let current = "overall";
 
 function tierColor(t) {
-  const map = { HT1:"#ff4d4d", LT1:"#ff6b6b", HT2:"#ff9f43", LT2:"#f5b95e", HT3:"#ffe066", LT3:"#f2e39a", HT4:"#9dff5c", LT4:"#c8f0a0", HT5:"#7fc3ff", LT5:"#b9dbff" };
-  return map[t] || "#ddd";
+  const m = { HT1:"#ff4d4d", LT1:"#ff8080", HT2:"#ff9f43", LT2:"#f7b96c", HT3:"#ffe066", LT3:"#f3e6a6", HT4:"#b6ff5c", LT4:"#d3f5a6", HT5:"#7fc3ff", LT5:"#c2ddff" };
+  return m[t] || "#ddd";
 }
 
 async function loadModes() {
@@ -14,9 +14,10 @@ async function loadModes() {
   const all = [{ key: "overall", name: "Overall" }, ...modes];
   for (const m of all) {
     const b = document.createElement("button");
-    b.innerHTML = m.img ? `<img src="${m.img}" alt=""> ${m.name}` : `<span class="star">★</span> ${m.name}`;
+    if (m.img) b.innerHTML = `<img src="${m.img}" alt=""> ${m.name}`;
+    else b.innerHTML = `<span>★</span> ${m.name}`;
     if (m.key === current) b.classList.add("active");
-    b.onclick = () => { current = m.key; loadModes(); loadBoard(); };
+    b.onclick = () => { current = m.key; loadBoard(); };
     nav.appendChild(b);
   }
 }
@@ -25,67 +26,40 @@ async function loadBoard() {
   const board = document.getElementById("board");
   const q = document.getElementById("search").value.trim().toLowerCase();
   board.innerHTML = "";
-
   if (current === "overall") {
     let data = await (await fetch("/api/mode/overall")).json();
     if (q) data = data.filter(p => p.name.toLowerCase().includes(q));
-    const wrap = document.createElement("div");
-    wrap.className = "tier";
-    wrap.innerHTML = `<h3 style="color:var(--primary)">Overall <span class="count">${data.length}</span></h3><div class="tier-players"></div>`;
-    const players = wrap.querySelector(".tier-players");
-    data.forEach((p, i) => {
-      const el = document.createElement("span");
-      el.className = "pill";
-      el.innerHTML = `<span class="rank">#${i + 1}</span>${p.name}<small>${p.region} • ${p.points} pts</small>`;
-      el.onclick = () => loadProfile(p.name);
-      players.appendChild(el);
-    });
-    board.appendChild(wrap);
-    return;
+    const w = document.createElement("div"); w.className = "tier";
+    w.innerHTML = `<h3>Overall <span class="count">${data.length}</span></h3><div class="tier-players"></div>`;
+    const p = w.querySelector(".tier-players");
+    data.forEach((x, i) => { const el = document.createElement("span"); el.className = "pill"; el.innerHTML = `<span class="rank">#${i+1}</span>${x.name}<small>${x.region} • ${x.points} pts</small>`; el.onclick=()=>loadProfile(x.name); p.appendChild(el); });
+    board.appendChild(w); return;
   }
-
   const data = await (await fetch(`/api/mode/${current}`)).json();
-  let hasAny = false;
+  let ok = false;
   for (const t of ORDER) {
-    const arr = (data[t] || []).filter(p => !q || p.name.toLowerCase().includes(q));
-    if (!arr.length) continue;
-    hasAny = true;
-    const wrap = document.createElement("div");
-    wrap.className = "tier";
-    wrap.innerHTML = `<h3 style="color:${tierColor(t)}">${t} <span class="count">${arr.length}</span></h3><div class="tier-players"></div>`;
-    const players = wrap.querySelector(".tier-players");
-    arr.forEach(p => {
-      const el = document.createElement("span");
-      el.className = "pill";
-      el.innerHTML = `${p.name}<small>${p.region}</small>`;
-      el.onclick = () => loadProfile(p.name);
-      players.appendChild(el);
-    });
-    board.appendChild(wrap);
+    const arr = (data[t]||[]).filter(p=>!q||p.name.toLowerCase().includes(q));
+    if (!arr.length) continue; ok = true;
+    const w = document.createElement("div"); w.className = "tier";
+    w.innerHTML = `<h3 style="color:${tierColor(t)}">${t} <span class="count">${arr.length}</span></h3><div class="tier-players"></div>`;
+    const p = w.querySelector(".tier-players");
+    arr.forEach(x => { const el = document.createElement("span"); el.className = "pill"; el.innerHTML = `${x.name}<small>${x.region}</small>`; el.onclick=()=>loadProfile(x.name); p.appendChild(el); });
+    board.appendChild(w);
   }
-  if (!hasAny) board.innerHTML = `<div class="empty">Sin jugadores testeados en ${current.toUpperCase()} aún.</div>`;
+  if (!ok) board.innerHTML = `<div class="empty">No players tested in ${current.toUpperCase()} yet.</div>`;
 }
 
 async function loadProfile(name) {
-  if (!name) {
-    const p = new URLSearchParams(location.search).get("player");
-    if (!p) return;
-    name = p;
-  }
+  if (!name) { const p = new URLSearchParams(location.search).get("player"); if (!p) return; name = p; }
   const r = await fetch(`/api/profile/${encodeURIComponent(name)}`);
   const box = document.getElementById("profile");
-  if (!r.ok) { box.innerHTML = `<h3>${name}</h3><p>Sin ranking.</p>`; return; }
+  if (!r.ok) { box.innerHTML = `<h3>${name}</h3><p>No ranking data.</p>`; return; }
   const { player, current: cur, history } = await r.json();
-  box.innerHTML = `<h3>${player.name}<br><small>${player.region}</small></h3>` +
-    `<div class="profile-grid">` +
-    modes.map(g => {
-      const v = cur[g.key];
-      return `<div class="stat" style="border-color:${tierColor(v)}55"><div class="v" style="color:${tierColor(v)}">${v || "—"}</div><div class="k">${g.name}</div></div>`;
-    }).join("") +
-    `</div>` +
-    `<h4>Últimos tests</h4>` +
-    (history.slice(0, 10).map(h => `<div class="hist"><small>${new Date(h.timestamp).toLocaleString()}</small><div>${h.gamemode.toUpperCase()} — <b style="color:${tierColor(h.tier)}">${h.tier}</b></div></div>`).join("") || "<small>Sin historial.</small>");
+  box.innerHTML = `<h3>${player.name}<br><small>${player.region}</small></h3><div class="profile-grid">` +
+    modes.map(g => { const v = cur[g.key]; return `<div class="stat" style="border-color:${tierColor(v)}55"><div class="v" style="color:${tierColor(v)}">${v||"—"}</div><div class="k">${g.name}</div></div>`; }).join("") +
+    `</div><h4>Recent Tests</h4>` +
+    (history.slice(0,10).map(h=>`<div class="hist"><small>${new Date(h.timestamp).toLocaleString()}</small><div>${h.gamemode.toUpperCase()} — <b style="color:${tierColor(h.tier)}">${h.tier}</b></div></div>`).join("")||"<small>No history.</small>");
 }
 
 document.getElementById("search").addEventListener("input", loadBoard);
-(async () => { await loadModes(); await loadBoard(); await loadProfile(); setInterval(loadBoard, 15000); })();
+(async ()=>{ await loadModes(); await loadBoard(); await loadProfile(); setInterval(loadBoard, 15000); })();
