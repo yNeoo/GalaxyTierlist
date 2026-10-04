@@ -80,18 +80,17 @@ Porfavor no seas toxico, y ten paciencia, duran de 1m-2m en contestar.
 **Exige que el jugador esté verificado** — si no, el bot avisa y no registra nada. El nick que sale es el de la verificación, nunca el de Discord.
 
 ```
-[embed 1]  Tier Test Results 🏆  [avatar]
-           IGN: `Distraccion`
-           Region: `NA`
-           Gamemode: `Sword`
-           Tier Before: `LT2` (o N/A)
-           Tier Earned: `HT1`
-           Tester: <@tester>
-
-[embed 2]  [ skin render 300px de mc-heads.net ]
+Tier Test Results 🏆  [avatar]
+IGN: `Distraccion`
+Region: `NA`
+Gamemode: `Sword`
+Tier Before: `LT2` (o N/A)
+Tier Earned: `HT1`
+Tester: <@tester>
+[ skin render 300px de mc-heads.net en el mismo embed ]
 ```
 
-Van como dos embeds para que la skin quede **al lado** en escritorio (y apilada en móvil). El embed se envía también al canal `RESULTS_CHANNEL_ID`.
+Un solo embed con la skin adentro. Se envía también al canal `RESULTS_CHANNEL_ID`.
 
 ### Comandos
 | Comando | Descripción |

@@ -115,12 +115,12 @@ const r = resultEmbed({
   before: "LT2",
 });
 const rj = r.map((e) => e.toJSON());
-line("embed 1 titulo : " + rj[0].title);
-line("embed 1 thumb  : " + (rj[0].thumbnail?.url ?? "(ninguno)"));
-line("embed 1 campos : " + rj[0].fields.map((x) => `${x.name}=${x.value}`).join("  "));
-line("embed 1 color  : #" + rj[0].color.toString(16).padStart(6, "0"));
-line("embed 2 imagen : " + (rj[1]?.image?.url ?? "(ninguna)"));
-chk(rj.length === 2, "2 embeds (texto + skin)");
+line("titulo : " + rj[0].title);
+line("thumb  : " + (rj[0].thumbnail?.url ?? "(ninguno)"));
+line("campos : " + rj[0].fields.map((x) => `${x.name}=${x.value}`).join("  "));
+line("imagen : " + (rj[0].image?.url ?? "(ninguna)"));
+line("color  : #" + rj[0].color.toString(16).padStart(6, "0"));
+chk(rj.length === 1, "un solo embed (skin adentro, no aparte)");
 chk(rj[0].title === "Tier Test Results 🏆", "titulo Tier Test Results");
 chk((rj[0].thumbnail?.url ?? "").startsWith("https://mc-heads.net/avatar/"), "thumbnail con avatar");
 chk(rj[0].fields.some((x) => x.name === "IGN" && x.value.includes("Distraccion")), "campo IGN");
@@ -129,8 +129,8 @@ chk(rj[0].fields.some((x) => x.name === "Gamemode" && x.value.includes("Sword"))
 chk(rj[0].fields.some((x) => x.name === "Tier Before" && x.value.includes("LT2")), "campo Tier Before");
 chk(rj[0].fields.some((x) => x.name === "Tier Earned" && x.value.includes("HT1")), "campo Tier Earned");
 chk(rj[0].fields.some((x) => x.name === "Tester" && x.value.includes("<@123>")), "campo Tester");
-chk(rj[1].image.url.startsWith("https://mc-heads.net/body/"), "skin grande en 2do embed");
-chk(rj[1].image.url.includes("300.png"), "skin en 300px (grande)");
+chk((rj[0].image?.url ?? "").startsWith("https://mc-heads.net/body/"), "skin grande en el mismo embed");
+chk((rj[0].image?.url ?? "").includes("300.png"), "skin en 300px (grande)");
 
 // sin tier anterior muestra N/A como en el video
 const r2 = resultEmbed({ name: "Nuevo", tier: "HT5", mode: "axe", tester: "123", uuid: null })[0].toJSON();
@@ -145,8 +145,7 @@ try {
   chk(false, "el avatar no cargo: " + e.message);
 }
 
-// el embed de imagen solo lleva imagen
-chk(Object.keys(rj[1]).every((k) => ["type", "image"].includes(k)), "embed 2 solo tiene la imagen");
+
 
 // ───────────────────────────── la skin realmente carga
 console.log("\n=== la skin responde? ===");
@@ -230,6 +229,9 @@ chk(src.includes("t:close:no"), "boton Cancelar el cierre");
 chk(src.includes("Solo los testers pueden cerrar el ticket"), "cerrar reservado a testers");
 chk(src.includes('startsWith("test-")'), "/result detecta si esta dentro de un ticket");
 chk(src.includes("Cerrando ticket en 10 segundos"), "autocierre tras /result con aviso");
+
+// el /result ya no manda texto con el link de la web
+chk(!src.includes("galaxytierlist.onrender.com/?player="), "sin mensaje Web: en el resultado");
 
 clearQueue("sword");
 db.exec("DELETE FROM meta WHERE key IN ('active_mode','queue_open','queue_opened_at','panels')");

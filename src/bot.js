@@ -753,6 +753,7 @@ async function handleSlash(it) {
 
 // ------------------------------------------------------------ embed resultado
 export function resultEmbed({ name, tier, mode, tester, notes = "", uuid, region = "NA", before = null }) {
+  // Un solo embed: campos + avatar arriba y la skin en grande abajo.
   const texto = new EmbedBuilder()
     .setTitle("Tier Test Results 🏆")
     .setThumbnail(avatarUrl({ uuid, name }))
@@ -764,14 +765,13 @@ export function resultEmbed({ name, tier, mode, tester, notes = "", uuid, region
       { name: "Tier Earned", value: `\`${tier}\`` },
       { name: "Tester", value: `<@${tester}>` }
     )
+    .setImage(skinUrl({ uuid, name }))
     .setColor(TIER_COLORS[tier] ?? 0x7c3aed)
     .setTimestamp();
 
   if (notes) texto.setFooter({ text: notes.replace(/`/g, "'").slice(0, 200) });
 
-  // La skin en grande va en un embed aparte para que Discord la muestre al lado.
-  const skin = skinUrl({ uuid, name });
-  return skin ? [texto, new EmbedBuilder().setImage(skin)] : [texto];
+  return [texto];
 }
 
 async function handleResult(it) {
@@ -814,12 +814,7 @@ async function handleResult(it) {
     if (rc?.isTextBased()) await rc.send({ embeds }).catch(() => {});
   }
 
-  await it.reply({
-    embeds,
-    content:
-      `Web: https://galaxytierlist.onrender.com/?player=${encodeURIComponent(ign)}` +
-      (anterior ? `  ·  antes: \`${anterior}\`` : ""),
-  });
+  await it.reply({ embeds });
 
   // Si el /result se uso dentro del ticket, el ticket se cierra solo.
   const inTicket = it.channel?.name?.startsWith("test-") ?? false;
