@@ -74,7 +74,7 @@ La modalidad es Sword.
 Porfavor no seas toxico, y ten paciencia, duran de 1m-2m en contestar.
 ```
 
-3. Pelean y el tester cierra con `/result jugador:@user gamemode:sword tier:HT3`.
+3. Pelean y el tester cierra con `/result jugador:@user gamemode:sword tier:HT3`. Si lo usa **dentro del ticket**, el canal se borra solo a los 10 segundos. Si no, el ticket se cierra con el botón **Cerrar ticket** (pide confirmación, solo testers).
 
 ### `/result`
 **Exige que el jugador esté verificado** — si no, el bot avisa y no registra nada. El nick que sale es el de la verificación, nunca el de Discord.

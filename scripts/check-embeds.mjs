@@ -172,14 +172,14 @@ chk(cuerpoEnqueue.includes("ephemeral: true"), "enqueue responde efimero");
 chk(cuerpoEnqueue.includes("refreshPanel"), "enqueue refresca el panel por separado");
 
 const cuerpoTicket = src.slice(
-  src.indexOf("async function handleTicket"),
+  src.indexOf("async function handleTicket("),
   src.indexOf("// ------------------------------------------------------------------ select")
 );
 chk(!cuerpoTicket.includes("it.update("), "handleTicket no llama it.update");
 
-// solo el selector de modalidad puede reescribir su propia respuesta efimera
+// it.update solo en respuestas efimeras propias: el selector y el cancelar cierre
 const updates = src.match(/\bit\.update\(/g) ?? [];
-chk(updates.length === 1, `it.update aparece 1 vez (el selector), hay ${updates.length}`);
+chk(updates.length === 2, `it.update 2 veces (selector + cancelar), hay ${updates.length}`);
 chk(!src.includes("respondAs"), "respondAs ya no existe en el codigo");
 
 console.log("\n=== categoria de los tickets ===");
@@ -189,7 +189,7 @@ chk(
 );
 const cuerpoPop = src.slice(
   src.indexOf("async function popAndOpenTicket"),
-  src.indexOf("async function handleTicket")
+  src.indexOf("async function handleTicket(")
 );
 chk(cuerpoPop.includes("parent: TICKET_CATEGORY_ID"), "el ticket cuelga de TICKET_CATEGORY_ID");
 chk(!cuerpoPop.includes("parent: RESULTS_CHANNEL_ID"), "ya NO cuelga del canal de resultados");
@@ -201,6 +201,16 @@ chk(src.includes('setName("queueinfo")'), "comando /queueinfo registrado");
 setQueueOpen("sword", false);
 const closed = ser(queuePayload(null, "sword"));
 chk(closed.embeds[0].footer.text.includes("Cerrada"), "tras cerrar, el pie dice cerrada");
+
+// ───────────────────────────── cierre de tickets
+console.log("\n=== cierre de tickets ===");
+chk(src.includes('setCustomId("t:close")'), "boton Cerrar ticket en el ticket");
+chk(src.includes("Cerrar ticket"), 'etiqueta "Cerrar ticket"');
+chk(src.includes("t:close:yes"), "confirmacion en 2 pasos (t:close:yes)");
+chk(src.includes("t:close:no"), "boton Cancelar el cierre");
+chk(src.includes("Solo los testers pueden cerrar el ticket"), "cerrar reservado a testers");
+chk(src.includes('startsWith("test-")'), "/result detecta si esta dentro de un ticket");
+chk(src.includes("Cerrando ticket en 10 segundos"), "autocierre tras /result con aviso");
 
 clearQueue("sword");
 db.exec("DELETE FROM meta WHERE key IN ('active_mode','queue_open','queue_opened_at','panels')");

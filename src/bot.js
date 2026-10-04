@@ -305,6 +305,13 @@ function buttonMode(customId) {
 }
 
 async function handleButton(it) {
+  // Cierre de tickets (van en el canal del ticket, no en el panel).
+  if (it.customId === "t:close") return handleTicketCloseAsk(it);
+  if (it.customId === "t:close:yes") return handleTicketCloseDo(it);
+  if (it.customId === "t:close:no") {
+    return it.update({ content: "Cierre cancelado.", embeds: [], components: [] }).catch(() => {});
+  }
+
   const base = String(it.customId ?? "").split(":").slice(0, 2).join(":");
   const mode = buttonMode(it.customId);
   switch (base) {
@@ -313,6 +320,32 @@ async function handleButton(it) {
     case "q:ticket": return handleTicket(it, mode);
     default: return it.reply({ content: "Boton desconocido.", ephemeral: true });
   }
+}
+
+/** Paso 1: pide confirmacion (efimera, solo la ve quien pulso). */
+async function handleTicketCloseAsk(it) {
+  if (!isTester(it)) {
+    return it.reply({ content: "Solo los testers pueden cerrar el ticket.", ephemeral: true });
+  }
+  return it.reply({
+    content: "¿Cerrar este ticket? Se eliminará el canal.",
+    components: [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("t:close:yes").setLabel("Sí, cerrar").setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId("t:close:no").setLabel("Cancelar").setStyle(ButtonStyle.Secondary)
+      ),
+    ],
+    ephemeral: true,
+  });
+}
+
+/** Paso 2: confirmado, elimina el canal del ticket. */
+async function handleTicketCloseDo(it) {
+  if (!isTester(it)) {
+    return it.reply({ content: "Solo los testers pueden cerrar el ticket.", ephemeral: true });
+  }
+  await it.reply({ content: "Cerrando ticket...", ephemeral: true }).catch(() => {});
+  await it.channel?.delete().catch((e) => console.error("[bot] no se pudo borrar el ticket:", e.message));
 }
 
 async function handleJoin(it, mode) {
@@ -453,6 +486,11 @@ async function popAndOpenTicket(it, mode) {
       .send({
         content: `${who} — tu tester es ${it.user.tag}.`,
         embeds: [ticketEmbed({ testerId: it.user.id, mode })],
+        components: [
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("t:close").setLabel("Cerrar ticket").setStyle(ButtonStyle.Danger)
+          ),
+        ],
       })
       .catch((e) => console.error("[bot] no se pudo enviar el embed:", e.message));
   }
@@ -771,10 +809,17 @@ async function handleResult(it) {
     if (rc?.isTextBased()) await rc.send({ embeds }).catch(() => {});
   }
 
-  return it.reply({
+  await it.reply({
     embeds,
     content:
       `Web: https://galaxytierlist.onrender.com/?player=${encodeURIComponent(ign)}` +
       (anterior ? `  ·  antes: \`${anterior}\`` : ""),
   });
+
+  // Si el /result se uso dentro del ticket, el ticket se cierra solo.
+  const inTicket = it.channel?.name?.startsWith("test-") ?? false;
+  if (inTicket) {
+    await it.channel.send("⏳ Test registrado. Cerrando ticket en 10 segundos...").catch(() => {});
+    setTimeout(() => it.channel?.delete().catch(() => {}), 10_000);
+  }
 }
