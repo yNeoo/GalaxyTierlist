@@ -16,8 +16,12 @@ const css = await readFile(new URL("../public/style.css", import.meta.url), "utf
 // --- marca propia + credito como la vez pasada (en comentario) ---
 chk(html.includes("<title>GalaxyTierlist - Rankings</title>"), "titulo GalaxyTierlist - Rankings");
 chk(html.includes("fonts.cdnfonts.com/css/geist"), "fuente Geist cargada");
+chk(html.includes("Press+Start+2P"), "fuente pixel para la marca");
+chk(html.includes("<kbd>/</kbd>"), "atajo / en el buscador");
 chk(css.includes("font-family: Geist"), "Geist como fuente principal");
-chk(css.includes("linear-gradient(90deg, #e9d5ff, #a78bfa"), "marca con degradado galaxia");
+chk(css.includes("linear-gradient(180deg, #f3e8ff"), "marca con degradado galaxia");
+chk(css.includes(".tabs a.active::after"), "indicador en la pestana activa");
+chk(/\(async function init\(\) \{[\s\S]*\}\)\(\);/.test(html), "init() se invoca (no vuelve a pasar lo de las pestanas)");
 const visible = html.replace(/<!--[\s\S]*?-->/g, "");
 chk(!/mctiers/i.test(visible), "sin marca MCTiers visible");
 chk(/mctiers/i.test(html), "credito a la referencia en comentario");

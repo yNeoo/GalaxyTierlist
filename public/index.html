@@ -7,6 +7,7 @@
 <title>GalaxyTierlist - Rankings</title>
 <meta name="description" content="GalaxyTierlist rankings: overall and gamemode tier lists.">
 <link href="https://fonts.cdnfonts.com/css/geist" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -19,6 +20,7 @@
     <div class="search">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M10 18a7.95 7.95 0 0 0 4.9-1.69l4.39 4.4 1.42-1.42-4.4-4.39A7.95 7.95 0 0 0 18 10c0-4.41-3.59-8-8-8s-8 3.59-8 8 3.59 8 8 8zm0-14c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6 2.69-6 6-6z"/></svg>
       <input id="search" placeholder="Search player..." autocomplete="off">
+      <kbd>/</kbd>
     </div>
   </nav>
 </header>
@@ -139,6 +141,12 @@ function renderBoard() {
 }
 
 document.getElementById("search").addEventListener("input", renderBoard);
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement !== document.getElementById("search")) {
+    e.preventDefault();
+    document.getElementById("search").focus();
+  }
+});
 document.getElementById("infoBtn").addEventListener("click", () => document.getElementById("infoPanel").classList.toggle("hidden"));
 document.getElementById("serverIp").addEventListener("click", async (e) => {
   const el = e.currentTarget;
@@ -164,7 +172,7 @@ document.getElementById("serverIp").addEventListener("click", async (e) => {
       else renderBoard();
     } catch {}
   }, 15000);
-});
+})();
 
 async function renderProfile(name) {
   const board = document.getElementById("board");
