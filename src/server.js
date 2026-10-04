@@ -1,8 +1,11 @@
 import express from "express";
 import cors from "cors";
 import path from "node:path";
-import { GAMEMODES, TIERS } from "./config.js";
-import { getRankings, getOverall, getProfile, db } from "./db.js";
+import { GAMEMODES, TIERS, REGIONS, MAX_QUEUE_SHOWN, modeByKey } from "./config.js";
+import {
+  getRankings, getOverall, getProfile, db,
+  getQueue, queueCount, isQueueOpen, getActiveMode
+} from "./db.js";
 
 export function createServer() {
   const app = express();
@@ -10,9 +13,12 @@ export function createServer() {
   app.use(express.json());
   app.use(express.static(path.join(process.cwd(), "public")));
 
-  // API estilo MCTiers /api/v2/mode/...
+  // ---- meta del proyecto ----
   app.get("/api/mode/list", (req, res) => res.json(GAMEMODES));
+  app.get("/api/tiers", (req, res) => res.json(TIERS));
+  app.get("/api/regions", (req, res) => res.json(REGIONS));
 
+  // ---- rankings estilo MCTiers ----
   app.get("/api/mode/overall", (req, res) => {
     const count = parseInt(req.query.count ?? "0");
     let overall = getOverall();
@@ -22,10 +28,23 @@ export function createServer() {
 
   app.get("/api/mode/:gamemode", (req, res) => {
     const { gamemode } = req.params;
-    if (!GAMEMODES.find(g => g.key === gamemode)) return res.status(404).json({ error: "unknown gamemode" });
+    if (!modeByKey(gamemode)) return res.status(404).json({ error: "unknown gamemode" });
     res.json(getRankings(gamemode));
   });
 
+  // ---- whitelist / cola ----
+  app.get("/api/queue", (req, res) => {
+    const gamemode = req.query.mode || getActiveMode();
+    if (!modeByKey(gamemode)) return res.status(404).json({ error: "unknown gamemode" });
+    res.json({
+      gamemode,
+      open: isQueueOpen(gamemode),
+      count: queueCount(gamemode),
+      players: getQueue(gamemode, MAX_QUEUE_SHOWN),
+    });
+  });
+
+  // ---- perfiles y tests ----
   app.get("/api/profile/:name", (req, res) => {
     const p = getProfile(req.params.name);
     if (!p) return res.status(404).json({ error: "not found" });
@@ -33,11 +52,11 @@ export function createServer() {
   });
 
   app.get("/api/tests", (req, res) => {
-    const rows = db.prepare("SELECT * FROM tests ORDER BY timestamp DESC LIMIT 50").all();
+    const rows = db.prepare(
+      "SELECT * FROM tests ORDER BY timestamp DESC LIMIT 50"
+    ).all();
     res.json(rows);
   });
-
-  app.get("/api/tiers", (req, res) => res.json(TIERS));
 
   return app;
 }
