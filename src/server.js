@@ -1,10 +1,10 @@
 import express from "express";
 import cors from "cors";
 import path from "node:path";
-import { GAMEMODES, TIERS, REGIONS, MAX_QUEUE_SHOWN, modeByKey } from "./config.js";
+import { GAMEMODES, TIERS, REGIONS, MAX_QUEUE_SHOWN, MAX_QUEUE_SIZE, modeByKey } from "./config.js";
 import {
   getRankings, getOverall, getProfile, db,
-  getQueue, queueCount, isQueueOpen, getActiveMode
+  getQueue, queueCount, isQueueOpen, getActiveMode, getOpenedAt
 } from "./db.js";
 
 export function createServer() {
@@ -39,7 +39,9 @@ export function createServer() {
     res.json({
       gamemode,
       open: isQueueOpen(gamemode),
+      openedAt: getOpenedAt(gamemode),
       count: queueCount(gamemode),
+      max: MAX_QUEUE_SIZE,
       players: getQueue(gamemode, MAX_QUEUE_SHOWN),
     });
   });

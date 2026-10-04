@@ -6,14 +6,15 @@ import {
   PermissionFlagsBits
 } from "discord.js";
 import {
-  GAMEMODES, TIERS, REGIONS, MAX_QUEUE_SHOWN,
+  GAMEMODES, TIERS, REGIONS, MAX_QUEUE_SHOWN, MAX_QUEUE_SIZE,
   modeByKey, modeName, skinUrl, TIER_COLORS
 } from "./config.js";
 import {
   db, upsertPlayer, logTest, getProfile, getCurrentTier,
   getQueue, queueCount, addToQueue, removeFromQueue, popQueue,
   getPlayerByDiscord, getOpenStates, setQueueOpen, isQueueOpen,
-  getActiveMode, setActiveMode, getPanel, setPanel
+  getOpenedAt, getActiveMode, setActiveMode,
+  getPanelFor, setPanelFor, getAllPanels, getUserQueues
 } from "./db.js";
 
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -22,10 +23,12 @@ const GUILD_ID = process.env.DISCORD_GUILD_ID;
 const RESULTS_CHANNEL_ID = process.env.RESULTS_CHANNEL_ID || "";
 // Categoria donde se abren los tickets de test.
 const TICKET_CATEGORY_ID = process.env.TICKET_CATEGORY_ID || "1555453253984981103";
+// Rol de waitlist que se menciona al abrir una cola (opcional).
+const WAITLIST_ROLE_ID = process.env.WAITLIST_ROLE_ID || "";
 
 const activeTesters = new Set(); // /start -> tester activo esta sesion
 const testerIds = new Set();      // vista con el boton Ticket
-const pendingJoin = new Set();    // pulso Unirse sin verificar -> modal y luego entra solo
+const pendingJoin = new Map();    // userId -> modalidad (pulso Entrar sin verificar)
 
 // --------------------------------------------------------------- utilidades
 function hasAdmin(it) {
@@ -48,71 +51,94 @@ async function mojangUUID(ign) {
 }
 
 // ------------------------------------------------------------ panel / cola
-export function queuePayload(userId = null) {
-  const mode = getActiveMode();
-  const g = modeByKey(mode);
-  const open = isQueueOpen(mode);
-  const rows = getQueue(mode);
-  const shown = rows.slice(0, MAX_QUEUE_SHOWN);
+// Hay un panel por modalidad: cada /openqueue publica el suyo y varios
+// pueden estar abiertos a la vez (uno de sword, otro de nethop, etc).
 
-  const desc = shown.length
+/** Menciones de testers activos para el campo "Testers" del panel. */
+function testersLine() {
+  const ids = [...new Set([...activeTesters, ...testerIds])];
+  return ids.length ? ids.map((id) => `<@${id}>`).join(" ") : "—";
+}
+
+export function queuePayload(userId = null, mode = null) {
+  const key = mode ?? getActiveMode();
+  const g = modeByKey(key);
+  const open = isQueueOpen(key);
+  const rows = getQueue(key);
+  const shown = rows.slice(0, MAX_QUEUE_SHOWN);
+  const openedAt = getOpenedAt(key);
+
+  const lista = shown.length
     ? shown
         .map((r, i) => {
-          const who = r.discord_id ? `<@${r.discord_id}>` : r.tag || "—";
-          return `**${i + 1}.** \`${r.ign}\` · ${who}`;
+          const who = r.discord_id ? `<@${r.discord_id}>` : (r.tag ? `\`${r.tag}\`` : "—");
+          return `${i + 1}. ${who} \`${r.ign}\` ${r.region ?? ""}`.trim();
         })
         .join("\n")
     : [1, 2, 3, 4, 5].join("\n");
 
   const embed = new EmbedBuilder()
-    .setTitle("GalaxyTierlist")
-    .setDescription(desc)
+    .setTitle(`${g.icon} ${g.name.toUpperCase()} - Cola ${open ? "abierta" : "cerrada"}`)
+    .addFields(
+      { name: "Testers", value: testersLine() },
+      {
+        name: open ? "Abierta" : "Cerrada",
+        value: open && openedAt ? `<t:${Math.floor(openedAt / 1000)}:R>` : "—",
+      },
+      {
+        name: `En espera - ${rows.length}/${MAX_QUEUE_SIZE}`,
+        value:
+          lista +
+          (rows.length > MAX_QUEUE_SHOWN ? `\n+${rows.length - MAX_QUEUE_SHOWN} mas en cola` : ""),
+      }
+    )
     .setColor(open ? 0x7c3aed : 0x4b5563)
-    .setFooter({
-      text: [
-        `${g.icon} ${g.name}`,
-        open ? "Abierta" : "Cerrada",
-        `${rows.length} en cola`,
-        rows.length > MAX_QUEUE_SHOWN ? `+${rows.length - MAX_QUEUE_SHOWN} mas` : null,
-      ]
-        .filter(Boolean)
-        .join("  ·  "),
-    });
+    .setFooter({ text: "Anotate con Entrar a la cola. Tu posición: /queueinfo" });
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("q:join").setLabel("Unirse").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("q:leave").setLabel("Salir").setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId(`q:join:${key}`).setLabel("Entrar a la cola").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`q:leave:${key}`).setLabel("Salir de la cola").setStyle(ButtonStyle.Danger)
   );
 
-  // Ticket solo para testers.
+  // Abrir ticket solo para testers.
   if (!userId || testerIds.has(userId) || activeTesters.has(userId)) {
     row.addComponents(
-      new ButtonBuilder().setCustomId("q:ticket").setLabel("Ticket").setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId(`q:ticket:${key}`).setLabel("Abrir ticket").setStyle(ButtonStyle.Primary)
     );
   }
 
   return { embeds: [embed], components: [row] };
 }
 
-async function refreshPanel(client) {
-  const panel = getPanel();
+/** Refresca el panel de una modalidad. */
+async function refreshPanel(client, mode = null) {
+  const key = mode ?? getActiveMode();
+  const panel = getPanelFor(key);
   if (!panel) return null;
   const ch = await client.channels.fetch(panel.channelId).catch(() => null);
   if (!ch?.isTextBased()) return null;
   const msg = await ch.messages.fetch(panel.messageId).catch(() => null);
   if (!msg?.editable) return null;
-  await msg.edit(queuePayload(null)).catch(() => {});
+  await msg.edit(queuePayload(null, key)).catch(() => {});
   return msg;
 }
 
-/** Publica el panel o, si ya existe, lo actualiza. */
-async function publishPanel(interaction) {
-  const existente = await refreshPanel(interaction.client);
-  if (existente) {
-    return existente;
+/** Refresca todos los paneles publicados (uno por modalidad). */
+async function refreshAllPanels(client) {
+  const all = getAllPanels();
+  const out = [];
+  for (const key of Object.keys(all)) {
+    out.push(await refreshPanel(client, key).catch(() => null));
   }
-  const msg = await interaction.channel.send(queuePayload(interaction.user.id));
-  setPanel(interaction.channel.id, msg.id);
+  return out.filter(Boolean);
+}
+
+/** Publica el panel de la modalidad o, si ya existe, lo actualiza. */
+async function publishPanel(interaction, mode) {
+  const existente = await refreshPanel(interaction.client, mode);
+  if (existente) return existente;
+  const msg = await interaction.channel.send(queuePayload(interaction.user.id, mode));
+  setPanelFor(mode, interaction.channel.id, msg.id);
   return msg;
 }
 
@@ -135,7 +161,7 @@ export function createBot() {
   client.once("ready", async () => {
     console.log(`[bot] GalaxyTierlist online como ${client.user.tag}`);
     registerCommands().catch(console.error);
-    await refreshPanel(client).catch(() => {});
+    await refreshAllPanels(client).catch(() => {});
   });
 
   client.on("interactionCreate", async (it) => {
@@ -167,6 +193,18 @@ async function registerCommands() {
       .setName("openqueue").setDescription("Abre la cola y publica el panel de la modalidad")
       .addStringOption((o) =>
         o.setName("modalidad").setDescription("Modalidad (si se omite, elige con el selector)")
+          .addChoices(...modeChoices).setRequired(false)),
+
+    new SlashCommandBuilder()
+      .setName("closequeue").setDescription("Cierra la cola de una modalidad")
+      .addStringOption((o) =>
+        o.setName("modalidad").setDescription("Modalidad a cerrar")
+          .addChoices(...modeChoices).setRequired(true)),
+
+    new SlashCommandBuilder()
+      .setName("queueinfo").setDescription("Ver tu posición en la cola")
+      .addStringOption((o) =>
+        o.setName("modalidad").setDescription("Modalidad (si se omite, muestra todas tus colas)")
           .addChoices(...modeChoices).setRequired(false)),
 
     new SlashCommandBuilder()
@@ -253,9 +291,11 @@ async function handleModal(it) {
   const anterior = getPlayerByDiscord(it.user.id);
   upsertPlayer({ uuid: m.id, name: m.name, discord_id: it.user.id, region: regionOk });
 
-  // Si habia pulsado Unirse sin verificar, se une al terminar la verificacion.
-  if (pendingJoin.delete(it.user.id)) {
-    return enqueue(it, m.name, regionOk, true);
+  // Si habia pulsado Entrar sin verificar, se une al terminar la verificacion.
+  if (pendingJoin.has(it.user.id)) {
+    const mode = pendingJoin.get(it.user.id);
+    pendingJoin.delete(it.user.id);
+    return enqueue(it, mode, m.name, regionOk, true);
   }
 
   const cambio = anterior && anterior.name !== m.name ? `\nAntes eras \`${anterior.name}\`.` : "";
@@ -266,17 +306,26 @@ async function handleModal(it) {
 }
 
 // ----------------------------------------------------------------- botones
+// Los botones llevan la modalidad (q:join:sword); los viejos sin sufijo
+// caen a la modalidad activa por compatibilidad.
+function buttonMode(customId) {
+  const parts = String(customId ?? "").split(":");
+  const key = parts.length >= 3 ? parts[2] : null;
+  return modeByKey(key) ? key : getActiveMode();
+}
+
 async function handleButton(it) {
-  switch (it.customId) {
-    case "q:join": return handleJoin(it);
-    case "q:leave": return handleLeave(it);
-    case "q:ticket": return handleTicket(it);
+  const base = String(it.customId ?? "").split(":").slice(0, 2).join(":");
+  const mode = buttonMode(it.customId);
+  switch (base) {
+    case "q:join": return handleJoin(it, mode);
+    case "q:leave": return handleLeave(it, mode);
+    case "q:ticket": return handleTicket(it, mode);
     default: return it.reply({ content: "Boton desconocido.", ephemeral: true });
   }
 }
 
-async function handleJoin(it) {
-  const mode = getActiveMode();
+async function handleJoin(it, mode) {
   const g = modeByKey(mode);
 
   if (!isQueueOpen(mode)) {
@@ -286,16 +335,15 @@ async function handleJoin(it) {
   const player = getPlayerByDiscord(it.user.id);
   if (!player) {
     // Sin verificar no se entra: se abre el modal y al terminar entra solo.
-    pendingJoin.add(it.user.id);
+    pendingJoin.set(it.user.id, mode);
     return it.showModal(verifyModal());
   }
 
-  return enqueue(it, player.name, player.region);
+  return enqueue(it, mode, player.name, player.region);
 }
 
 /** Inscribe al jugador. `trasModal` cambia la respuesta a efimera. */
-async function enqueue(it, ign, region, trasModal = false) {
-  const mode = getActiveMode();
+async function enqueue(it, mode, ign, region, trasModal = false) {
   const g = modeByKey(mode);
 
   if (!isQueueOpen(mode)) {
@@ -313,7 +361,14 @@ async function enqueue(it, ign, region, trasModal = false) {
     region: region ?? "NA",
   });
 
-  await refreshPanel(it.client);
+  if (res.full) {
+    return it.reply({
+      content: `La cola de **${g.icon} ${g.name}** esta llena (${MAX_QUEUE_SIZE}/${MAX_QUEUE_SIZE}).`,
+      ephemeral: true,
+    });
+  }
+
+  await refreshPanel(it.client, mode);
 
   const embed = new EmbedBuilder()
     .setTitle(res.already ? "Ya estabas" : "Unido a la cola")
@@ -323,23 +378,22 @@ async function enqueue(it, ign, region, trasModal = false) {
         : `Te uniste a la cola de **${g.icon} ${g.name}** en el puesto **${res.position}**.`
     )
     .setColor(res.already ? 0x9aa4b2 : 0x22c55e)
-    .setFooter({ text: "Un tester abrira tu ticket." });
+    .setFooter({ text: "Tu posición exacta: /queueinfo" });
 
   if (trasModal) return it.reply({ embeds: [embed], ephemeral: true });
   return respondEphemeral(it, { embeds: [embed] });
 }
 
-async function handleLeave(it) {
-  const mode = getActiveMode();
-  const n = removeFromQueue(it.user.id, mode) || removeFromQueue(it.user.id);
-  await refreshPanel(it.client);
+async function handleLeave(it, mode) {
+  const n = removeFromQueue(it.user.id, mode);
+  await refreshPanel(it.client, mode);
 
   const embed = new EmbedBuilder()
     .setTitle(n > 0 ? "Saliste de la cola" : "No estabas en la cola")
     .setDescription(
       n > 0
         ? `Te sacaste de la cola de **${modeName(mode)}**.`
-        : "No tenias puesto en ninguna cola."
+        : `No tenias puesto en la cola de **${modeName(mode)}**.`
     )
     .setColor(0x9aa4b2);
 
@@ -413,16 +467,15 @@ async function popAndOpenTicket(it, mode) {
       .catch((e) => console.error("[bot] no se pudo enviar el embed:", e.message));
   }
 
-  await refreshPanel(it.client);
+  await refreshPanel(it.client, mode);
   return { row, ticket, mode: g };
 }
 
-async function handleTicket(it) {
+async function handleTicket(it, mode) {
   if (!isTester(it)) {
     return it.reply({ content: "Solo los testers pueden abrir tickets.", ephemeral: true });
   }
 
-  const mode = getActiveMode();
   const res = await popAndOpenTicket(it, mode);
   if (res.error) return it.reply({ content: res.error, ephemeral: true });
 
@@ -463,24 +516,58 @@ async function handleSelect(it) {
   if (!isTester(it)) {
     return it.reply({ content: "Solo los testers pueden abrir la cola.", ephemeral: true });
   }
-  return openQueue(it, it.values[0]);
+  const g = modeByKey(it.values[0]);
+  setActiveMode(it.values[0]);
+  setQueueOpen(it.values[0], true);
+  const msg = await publishPanel(it, it.values[0]);
+  const ping = WAITLIST_ROLE_ID ? `<@&${WAITLIST_ROLE_ID}> | Waitlist ${g.name} — ` : "";
+  await it.channel
+    .send(`🔔 ${ping}**${g.name.toUpperCase()}** queue is now open!`)
+    .catch(() => {});
+  return it.update({
+    content:
+      `Cola abierta para **${g.icon} ${g.name}** — ${queueCount(it.values[0])} en cola.\n` +
+      (msg ? `Panel: ${msg.url}` : "No se pudo publicar el panel."),
+    embeds: [],
+    components: [],
+  });
 }
 
 // --------------------------------------------------------------- comandos
+/** Abre la cola de una modalidad: publica su panel y avisa en el canal. */
 async function openQueue(it, modeKey) {
   const g = modeByKey(modeKey);
   if (!g) return it.reply({ content: "Modalidad desconocida.", ephemeral: true });
 
   setActiveMode(modeKey);
   setQueueOpen(modeKey, true);
-  const msg = await publishPanel(it);
+  const msg = await publishPanel(it, modeKey);
 
-  return it.update({
+  // Aviso estilo "CRYSTAL queue is now open!", con mencion al rol de waitlist si hay.
+  const ping = WAITLIST_ROLE_ID ? `<@&${WAITLIST_ROLE_ID}> | Waitlist ${g.name} — ` : "";
+  await it.channel
+    .send(`🔔 ${ping}**${g.name.toUpperCase()}** queue is now open!`)
+    .catch(() => {});
+
+  return it.reply({
     content:
       `Cola abierta para **${g.icon} ${g.name}** — ${queueCount(modeKey)} en cola.\n` +
       (msg ? `Panel: ${msg.url}` : "No se pudo publicar el panel."),
-    embeds: [],
-    components: [],
+    ephemeral: true,
+  });
+}
+
+/** Cierra la cola de una modalidad y deja su panel en "cerrada". */
+async function closeQueue(it, modeKey) {
+  const g = modeByKey(modeKey);
+  if (!g) return it.reply({ content: "Modalidad desconocida.", ephemeral: true });
+
+  setQueueOpen(modeKey, false);
+  await refreshPanel(it.client, modeKey);
+
+  return it.reply({
+    content: `Cola de **${g.icon} ${g.name}** cerrada. Quedan **${queueCount(modeKey)}** en espera.`,
+    ephemeral: true,
   });
 }
 
@@ -493,21 +580,53 @@ async function handleSlash(it) {
       return it.reply({ content: "Solo los testers pueden abrir la cola.", ephemeral: true });
     }
     const elegida = it.options.getString("modalidad");
-    if (elegida) {
-      setActiveMode(elegida);
-      setQueueOpen(elegida, true);
-      const g = modeByKey(elegida);
-      const msg = await publishPanel(it);
+    if (elegida) return openQueue(it, elegida);
+    return it.reply({
+      content: "**Elige la modalidad de la cola**",
+      components: modePicker(),
+      ephemeral: true,
+    });
+  }
+
+  // ---- /closequeue modalidad ----
+  if (commandName === "closequeue") {
+    if (!isTester(it)) {
+      return it.reply({ content: "Solo los testers pueden cerrar la cola.", ephemeral: true });
+    }
+    return closeQueue(it, it.options.getString("modalidad"));
+  }
+
+  // ---- /queueinfo [modalidad] ----
+  if (commandName === "queueinfo") {
+    const mode = it.options.getString("modalidad");
+    const player = getPlayerByDiscord(it.user.id);
+    if (!player) {
       return it.reply({
-        content:
-          `Cola abierta para **${g.icon} ${g.name}**.\n` +
-          (msg ? `Panel: ${msg.url}` : "No se pudo publicar el panel."),
+        content: "No estas verificado. Usa **Entrar a la cola** en cualquier panel para verificarte.",
+        ephemeral: true,
+      });
+    }
+    const colas = getUserQueues(it.user.id);
+    const filtradas = mode ? colas.filter((q) => q.gamemode === mode) : colas;
+    if (!filtradas.length) {
+      return it.reply({
+        content: mode
+          ? `No estas en la cola de **${modeName(mode)}**.`
+          : "No estas en ninguna cola.",
         ephemeral: true,
       });
     }
     return it.reply({
-      content: "**Elige la modalidad de la cola**",
-      components: modePicker(),
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(`${player.name} — tu posición`)
+          .setDescription(
+            filtradas
+              .map((q) => `**${modeName(q.gamemode)}:** puesto **${q.position}** de ${queueCount(q.gamemode)}`)
+              .join("\n")
+          )
+          .setColor(0x7c3aed),
+      ],
       ephemeral: true,
     });
   }
@@ -539,9 +658,7 @@ async function handleSlash(it) {
     if (!isTester(it)) {
       return it.reply({ content: "Solo los testers pueden cerrar la cola.", ephemeral: true });
     }
-    setQueueOpen(mode, false);
-    await refreshPanel(it.client);
-    return it.reply(`Cola de **${modeName(mode)}** cerrada.`);
+    return closeQueue(it, mode);
   }
 
   if (commandName === "verify") return it.showModal(verifyModal());
@@ -549,18 +666,20 @@ async function handleSlash(it) {
   if (commandName === "start") {
     activeTesters.add(it.user.id);
     testerIds.add(it.user.id);
-    await refreshPanel(it.client).catch(() => {});
+    await refreshAllPanels(it.client).catch(() => {});
     return it.reply("Ahora eres tester activo.");
   }
 
   if (commandName === "stop") {
     activeTesters.delete(it.user.id);
+    testerIds.delete(it.user.id);
+    await refreshAllPanels(it.client).catch(() => {});
     return it.reply("Dejaste de ser tester activo.");
   }
 
   if (commandName === "leave") {
     const n = removeFromQueue(it.user.id);
-    await refreshPanel(it.client);
+    await refreshAllPanels(it.client);
     return it.reply({
       content: n > 0 ? "Saliste de la cola." : "No estabas en la cola.",
       ephemeral: true,
@@ -575,7 +694,8 @@ async function handleSlash(it) {
     const user = it.options.getUser("jugador");
     const mode = it.options.getString("modalidad");
     const n = removeFromQueue(user.id, mode) || removeFromQueue(user.id);
-    await refreshPanel(it.client);
+    if (mode) await refreshPanel(it.client, mode);
+    else await refreshAllPanels(it.client);
     return it.reply(n > 0 ? `${user} sacado de la cola.` : `${user} no estaba en la cola.`);
   }
 
@@ -645,7 +765,7 @@ async function handleResult(it) {
 
   logTest({ tester_discord: it.user.id, tested_name: ign, gamemode: mode, tier, notes });
   removeFromQueue(player.discord_id, mode);
-  await refreshPanel(it.client);
+  await refreshPanel(it.client, mode);
 
   const embeds = resultEmbed({
     name: ign,

@@ -16,26 +16,39 @@ const ser = (p) => ({
 });
 const line = (t = "") => console.log("  │ " + t);
 
+// Estado limpio: la DB local arrastra metas de corridas anteriores.
+db.exec("DELETE FROM meta WHERE key IN ('active_mode','queue_open','queue_opened_at','panels')");
 setActiveMode("sword");
 setQueueOpen("sword", true);
 
+const campo = (p, nombre) => p.embeds[0].fields.find((f) => f.name.startsWith(nombre));
+
 // ───────────────────────────── panel de cola: vacía
 clearQueue("sword");
-let p = ser(queuePayload(null));
+let p = ser(queuePayload(null, "sword"));
 console.log("\n=== PANEL DE COLA (vacia) ===");
 line(`titulo : ${p.embeds[0].title}`);
-line("desc   : " + JSON.stringify(p.embeds[0].description));
+p.embeds[0].fields.forEach((f) => line(`campo "${f.name}" = ${JSON.stringify(f.value)}`));
 line("pie    : " + p.embeds[0].footer.text);
 line("botones: " + p.buttons.map((b) => `${b.label}->${b.custom_id}`).join(", "));
-chk(p.embeds[0].title === "GalaxyTierlist", 'titulo "GalaxyTierlist"');
-chk(p.buttons.length === 3, "3 botones: Unirse, Salir, Ticket");
-chk(p.buttons.map((b) => b.label).join(",") === "Unirse,Salir,Ticket", "orden Unirse, Salir, Ticket");
+chk(p.embeds[0].title.includes("SWORD - Cola abierta"), 'titulo "SWORD - Cola abierta"');
+chk(p.buttons.length === 3, "3 botones");
+chk(
+  p.buttons.map((b) => b.label).join(",") === "Entrar a la cola,Salir de la cola,Abrir ticket",
+  "botones Entrar / Salir de la cola / Abrir ticket"
+);
+chk(p.buttons.every((b) => b.custom_id.endsWith(":sword")), "botones llevan la modalidad");
 chk(!p.buttons.some((b) => b.custom_id === "q:verify"), "ya NO hay boton Verify en el panel");
 chk(!p.buttons.some((b) => b.custom_id === "q:open"), "ya NO hay boton Open en el panel");
-chk(!p.embeds[0].description.includes("```"), 'sin bloque de codigo (el "cuadrado")');
-chk(p.embeds[0].description.trim() === "1\n2\n3\n4\n5", "vacia = solo los numeros 1-5");
+chk(campo(p, "En espera").value.trim() === "1\n2\n3\n4\n5", "vacia = solo los numeros 1-5");
+chk(!JSON.stringify(p.embeds[0]).includes("```"), 'sin bloque de codigo (el "cuadrado")');
+chk(p.embeds[0].footer.text.includes("/queueinfo"), "pie menciona /queueinfo");
 
-// ───────────────────────────── panel con 7 en cola -> muestra 1..5
+// cerrada por defecto en otra modalidad (nunca abierta)
+let pc = ser(queuePayload(null, "nethop"));
+chk(pc.embeds[0].title.includes("Cola cerrada"), "modalidad sin abrir sale cerrada");
+
+// ───────────────────────────── panel con 7 en cola
 clearQueue("sword");
 const gente = [
   ["Distraccion", "NA", "069a79f444e94726a5befca90e38aaf5"],
@@ -52,27 +65,49 @@ gente.forEach(([n, reg], i) => {
 });
 
 console.log("\n=== PANEL DE COLA (7 en cola) ===");
-p = ser(queuePayload(null));
-line(p.embeds[0].description);
-line("pie: " + p.embeds[0].footer.text);
-chk(/^\*\*1\.\*\*/.test(p.embeds[0].description.trim()), "empieza en el puesto 1");
-chk(p.embeds[0].description.includes("**5.**"), "incluye el puesto 5");
-chk((p.embeds[0].description.match(/\*\*\d+\.\*\*/g) ?? []).length === 5, "exactamente 5 puestos");
-chk(p.embeds[0].description.includes("<@d0>"), "el #1 muestra su tag (mencion)");
-chk(!p.embeds[0].description.includes("Cobblemon"), "el #6 NO aparece");
-chk(!p.embeds[0].description.includes("gays"), "el #7 NO aparece");
+p = ser(queuePayload(null, "sword"));
+const espera = campo(p, "En espera");
+line(`campo "${espera.name}"`);
+line(espera.value);
+chk(espera.name === "En espera - 7/15", "campo En espera - 7/15");
+chk(/^1\. /.test(espera.value.trim()), "empieza en el puesto 1");
+chk(espera.value.includes("7. "), "incluye el puesto 7");
+chk((espera.value.match(/^\d+\. /gm) ?? []).length === 7, "los 7 puestos visibles");
+chk(espera.value.includes("<@d0>"), "el #1 muestra su tag (mencion)");
 chk(
-  p.embeds[0].description.indexOf("Distraccion") < p.embeds[0].description.indexOf("Notch"),
+  espera.value.indexOf("Distraccion") < espera.value.indexOf("Notch"),
   "#1 va antes que #2"
 );
-chk(p.embeds[0].footer.text.includes("+2 mas"), "pie avisa de los 2 restantes");
-chk(p.embeds[0].footer.text.includes("7 en cola"), "pie con el total");
+chk(campo(p, "Testers") !== undefined, "campo Testers presente");
+chk(campo(p, "Abierta") !== undefined, "campo Abierta presente");
 
-console.log("\n=== vista de jugador (sin Ticket) ===");
-const u = ser(queuePayload("d0"));
+// tope de capacidad: 15 adentro, el 16 no entra
+for (let i = 7; i < 15; i++) {
+  upsertPlayer({ name: `Extra${i}`, discord_id: `x${i}`, region: "NA" });
+  addToQueue({ discord_id: `x${i}`, ign: `Extra${i}`, tag: `ex${i}`, gamemode: "sword", region: "NA" });
+}
+upsertPlayer({ name: "Lleno", discord_id: "xfull", region: "NA" });
+const lleno = addToQueue({ discord_id: "xfull", ign: "Lleno", tag: "lf", gamemode: "sword", region: "NA" });
+chk(lleno.full === true, "la cola llena (15/15) rechaza al 16");
+const pfull = ser(queuePayload(null, "sword"));
+chk(campo(pfull, "En espera").name === "En espera - 15/15", "campo En espera - 15/15");
+clearQueue("sword");
+
+// paneles independientes por modalidad
+setQueueOpen("nethop", true);
+addToQueue({ discord_id: "dx", ign: "NetPlayer", tag: "nx", gamemode: "nethop", region: "NA" });
+const pn = ser(queuePayload(null, "nethop"));
+chk(pn.embeds[0].title.includes("NETHOP"), "panel de nethop independiente");
+chk(campo(pn, "En espera").name === "En espera - 1/15", "nethop con 1 en cola");
+chk(campo(p, "En espera").name === "En espera - 7/15", "sword intacta con 7");
+clearQueue("nethop");
+setQueueOpen("nethop", false);
+
+console.log("\n=== vista de jugador (sin Abrir ticket) ===");
+const u = ser(queuePayload("d0", "sword"));
 line("botones: " + u.buttons.map((b) => b.label).join(", "));
-chk(u.buttons.length === 2, "jugador ve solo Unirse y Salir");
-chk(!u.buttons.some((b) => b.custom_id === "q:ticket"), "Ticket reservado a testers");
+chk(u.buttons.length === 2, "jugador ve solo Entrar y Salir");
+chk(!u.buttons.some((b) => b.custom_id.startsWith("q:ticket")), "Abrir ticket reservado a testers");
 
 // ───────────────────────────── embed de resultado
 console.log("\n=== EMBED DE RESULTADO ===");
@@ -166,7 +201,15 @@ const cuerpoPop = src.slice(
 chk(cuerpoPop.includes("parent: TICKET_CATEGORY_ID"), "el ticket cuelga de TICKET_CATEGORY_ID");
 chk(!cuerpoPop.includes("parent: RESULTS_CHANNEL_ID"), "ya NO cuelga del canal de resultados");
 
+// ───────────────────────────── /closequeue cierra y el panel lo refleja
+console.log("\n=== /closequeue ===");
+chk(src.includes('setName("closequeue")'), "comando /closequeue registrado");
+chk(src.includes('setName("queueinfo")'), "comando /queueinfo registrado");
+setQueueOpen("sword", false);
+const closed = ser(queuePayload(null, "sword"));
+chk(closed.embeds[0].title.includes("Cola cerrada"), "tras cerrar, el panel dice cerrada");
+
 clearQueue("sword");
-db.exec("DELETE FROM meta WHERE key='active_mode'");
+db.exec("DELETE FROM meta WHERE key IN ('active_mode','queue_open','queue_opened_at','panels')");
 console.log(fails === 0 ? "\nTODO OK" : `\n${fails} FALLOS`);
 process.exit(fails === 0 ? 0 : 1);

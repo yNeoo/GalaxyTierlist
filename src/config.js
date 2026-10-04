@@ -26,8 +26,9 @@ export const TIER_POINTS = {
   HT5: 10, LT5: 5
 };
 
-// Cuantos puestos se muestran en el panel de la cola.
-export const MAX_QUEUE_SHOWN = 5;
+// Capacidad de cada cola (como el 2/15 de la referencia) y puestos visibles.
+export const MAX_QUEUE_SIZE = 15;
+export const MAX_QUEUE_SHOWN = 15;
 
 export const DEFAULT_MODE = GAMEMODES[0].key;
 

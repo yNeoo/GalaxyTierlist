@@ -24,7 +24,7 @@ npm start
 ## 3. Subir a GitHub y Render
 1. Sube solo la carpeta `galaxytierlist/` a un repo GitHub.
 2. En render.com → New → Blueprint → conecta el repo (usa `render.yaml`).
-3. En Render → Environment agrega: `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_GUILD_ID`, `RESULTS_CHANNEL_ID` y `TICKET_CATEGORY_ID`.
+3. En Render → Environment agrega: `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_GUILD_ID`, `RESULTS_CHANNEL_ID`, `TICKET_CATEGORY_ID` y `WAITLIST_ROLE_ID` (rol que se menciona al abrir cola, opcional).
 4. Deploy. Te da URL tipo `https://galaxytierlist.onrender.com`.
 
 ## 4. Uso — cola y resultados
@@ -32,41 +32,43 @@ npm start
 **Modalidades:** Sword, NethOP, CPVP, DiaPot, Mace, Axe.
 
 ### Poner en marcha
-1. `/start` — te marca como tester activo (verás el botón `Ticket`).
+1. `/start` — te marca como tester activo (verás el botón `Abrir ticket`).
 2. `/openqueue` — muestra el selector de modalidad.
-3. `/openqueue modalidad:Sword` — abre la cola de esa modalidad y publica el panel. Fíjalo con 📌.
+3. `/openqueue modalidad:Sword` — abre la cola de esa modalidad, publica su panel y avisa en el canal. Fíjalo con 📌.
 
-`/openqueue` publica el panel si no existe, y si ya existe lo **actualiza** en vez de duplicarlo.
+Cada modalidad tiene **su propio panel**: puedes tener la de sword y la de nethop abiertas a la vez. `/openqueue` publica el panel si no existe, y si ya existe lo **actualiza** en vez de duplicarlo. `/closequeue modalidad:Sword` cierra esa cola.
 
 ### El panel de la cola
-Embed titulado **GalaxyTierlist** con los **puestos 1 a 5** en orden de llegada:
+Un embed por modalidad, estilo GangTiers:
 
 ```
-GalaxyTierlist
-1. `Distraccion` · @user
-2. `Notch` · @user
-3. `Zenith` · @user
-4. `Squids` · @user
-5. `Betatest` · @user
-🗡️ Sword · Abierta · 7 en cola · +2 mas
+🔮 CRYSTAL - Cola abierta
+Testers
+@Devqd
+Abierta
+Hace 21 minutos
+En espera - 2/15
+1. @Dillom `Dillom` NA
+2. @bawipz `bawipz` NA
+Anotate con Entrar a la cola. Tu posición: /queueinfo
 ```
 
-Si la cola está vacía, la descripción es solo `1 2 3 4 5`.
+Si la cola está vacía, la lista es solo `1 2 3 4 5`. Capacidad: 15 por cola (el 16 no entra).
 
-**El panel nunca se substituye.** Es un mensaje compartido: al pulsar `Unirse`, `Salir` o `Ticket` la confirmación llega **efímera** (solo la ve quien pulsó) y el panel se refresca aparte con las posiciones nuevas.
+**El panel nunca se substituye.** Es un mensaje compartido: al pulsar los botones la confirmación llega **efímera** (solo la ve quien pulsó) y el panel se refresca aparte con las posiciones nuevas.
 
 Botones (solo 3):
 | Boton | Quien | Que hace |
 |---|---|---|
-| **Unirse** | todos | Entra a la cola. Si no está verificado, se abre el modal de verificación y al terminar entra solo. |
-| **Salir** | todos | Sale de la cola. |
-| **Ticket** | **solo testers** | Saca al **#1** y le abre un ticket privado. |
+| **Entrar a la cola** | todos | Entra a la cola. Si no está verificado, se abre el modal de verificación y al terminar entra solo. |
+| **Salir de la cola** | todos | Sale de la cola. |
+| **Abrir ticket** | **solo testers** | Saca al **#1** y le abre un ticket privado. |
 
-Los jugadores que no son testers solo ven `Unirse` y `Salir`: el panel se re-renderiza según quién pulse.
+Los jugadores que no son testers solo ven `Entrar a la cola` y `Salir de la cola`: el panel se re-renderiza según quién pulse.
 
 ### El flujo
-1. Jugador pulsa **Unirse**. Si no está verificado, el bot abre el modal (IGN + región) y valida el IGN contra la API de Mojang. Al confirmar, **entra directo a la cola** en el puesto que le toque.
-2. Un tester pulsa **Ticket** → se crea el canal `test-<modo>-<ign>` dentro de la **categoría de test** (`TICKET_CATEGORY_ID`, por defecto `1555453253984981103`), privado para el jugador y el tester, y se le envía:
+1. Jugador pulsa **Entrar a la cola**. Si no está verificado, el bot abre el modal (IGN + región) y valida el IGN contra la API de Mojang. Al confirmar, **entra directo a la cola** en el puesto que le toque. Su puesto exacto lo ve con `/queueinfo`.
+2. Un tester pulsa **Abrir ticket** → se crea el canal `test-<modo>-<ign>` dentro de la **categoría de test** (`TICKET_CATEGORY_ID`, por defecto `1555453253984981103`), privado para el jugador y el tester, y se le envía:
 
 ```
 GalaxyTiers
@@ -95,7 +97,9 @@ Van como dos embeds para que la skin quede **al lado** en escritorio (y apilada 
 ### Comandos
 | Comando | Descripción |
 |---|---|
-| `/openqueue [modalidad]` | Abre la cola y publica/actualiza el panel. |
+| `/openqueue [modalidad]` | Abre la cola y publica/actualiza su panel (+ aviso en el canal). |
+| `/closequeue modalidad` | Cierra la cola de esa modalidad. |
+| `/queueinfo [modalidad]` | Ver tu puesto en la cola. |
 | `/queue status\|close [modalidad]` | Ver el estado de todas las colas o cerrar una. |
 | `/verify` | Verifica tu cuenta sin pasar por el botón. |
 | `/start` / `/stop` | Tester activo / salir. |

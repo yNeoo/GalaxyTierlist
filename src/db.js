@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { GAMEMODES, TIER_POINTS } from "./config.js";
+import { GAMEMODES, TIER_POINTS, MAX_QUEUE_SIZE } from "./config.js";
 
 const dataDir = path.join(process.cwd(), "data");
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -152,14 +152,25 @@ export function inQueue(discordId, gamemode) {
   return db.prepare("SELECT * FROM queue WHERE discord_id=? AND gamemode=?").get(discordId, gamemode) ?? null;
 }
 
-/** Inserta en la whitelist. Devuelve { ok, position, already } */
+/** Inserta en la cola. Devuelve { ok, position, already, full } */
 export function addToQueue({ discord_id, ign, tag, gamemode, region }) {
   const existing = inQueue(discord_id, gamemode);
   if (existing) return { ok: false, already: true, position: queuePosition(existing.id) };
+  if (queueCount(gamemode) >= MAX_QUEUE_SIZE) {
+    return { ok: false, already: false, full: true, position: null };
+  }
   db.prepare(
     "INSERT INTO queue (discord_id, ign, tag, gamemode, region, created) VALUES (?,?,?,?,?,?)"
   ).run(discord_id, ign, tag ?? null, gamemode, region ?? "NA", Date.now());
   return { ok: true, already: false, position: queueCount(gamemode) };
+}
+
+/** Todas las colas donde esta un usuario, con su posicion en cada una. */
+export function getUserQueues(discordId) {
+  const rows = db.prepare(
+    "SELECT * FROM queue WHERE discord_id = ? ORDER BY created ASC, id ASC"
+  ).all(discordId);
+  return rows.map((r) => ({ ...r, position: queuePosition(r.id) }));
 }
 
 export function removeFromQueue(discordId, gamemode) {
@@ -209,11 +220,11 @@ export function setMeta(key, value) {
   ).run(key, JSON.stringify(value));
 }
 
-/** { sword: true, nethop: false, ... } - por defecto todas abiertas. */
+/** { sword: true, nethop: false, ... } - por defecto todas cerradas. */
 export function getOpenStates() {
   const stored = getMeta("queue_open", {}) ?? {};
   const out = {};
-  for (const g of GAMEMODES) out[g.key] = stored[g.key] !== false;
+  for (const g of GAMEMODES) out[g.key] = stored[g.key] === true;
   return out;
 }
 
@@ -221,11 +232,24 @@ export function setQueueOpen(gamemode, open) {
   const states = getOpenStates();
   states[gamemode] = !!open;
   setMeta("queue_open", states);
+  if (open) setOpenedAt(gamemode, Date.now());
   return states[gamemode];
 }
 
 export function isQueueOpen(gamemode) {
-  return getOpenStates()[gamemode] !== false;
+  return getOpenStates()[gamemode] === true;
+}
+
+/** Cuando se abrio cada cola (para el "Hace X minutos" del panel). */
+export function getOpenedAt(gamemode) {
+  const stored = getMeta("queue_opened_at", {}) ?? {};
+  return stored[gamemode] ?? null;
+}
+
+export function setOpenedAt(gamemode, ts) {
+  const stored = getMeta("queue_opened_at", {}) ?? {};
+  stored[gamemode] = ts;
+  setMeta("queue_opened_at", stored);
 }
 
 export function getActiveMode() {
@@ -239,15 +263,46 @@ export function setActiveMode(key) {
   return key;
 }
 
-/** { channelId, messageId } del panel publicado. */
+/**
+ * Un panel por modalidad: { sword: { channelId, messageId }, ... }.
+ * Asi puede haber una cola de sword y otra de nethop abiertas a la vez.
+ */
+export function getAllPanels() {
+  // Migra el formato viejo (un solo panel) si existe.
+  const legacy = getMeta("panel", null);
+  const stored = getMeta("panels", null);
+  if (!stored && legacy?.messageId) {
+    const active = getActiveMode();
+    return { [active]: legacy };
+  }
+  return stored ?? {};
+}
+
+export function getPanelFor(gamemode) {
+  return getAllPanels()[gamemode] ?? null;
+}
+
+export function setPanelFor(gamemode, channelId, messageId) {
+  const all = getAllPanels();
+  all[gamemode] = { channelId, messageId };
+  setMeta("panels", all);
+}
+
+export function clearPanelFor(gamemode) {
+  const all = getAllPanels();
+  delete all[gamemode];
+  setMeta("panels", all);
+}
+
+/** Compat: panel de la modalidad activa. */
 export function getPanel() {
-  return getMeta("panel", null);
+  return getPanelFor(getActiveMode());
 }
 
 export function setPanel(channelId, messageId) {
-  setMeta("panel", { channelId, messageId });
+  setPanelFor(getActiveMode(), channelId, messageId);
 }
 
 export function clearPanel() {
-  setMeta("panel", null);
+  setMeta("panels", {});
 }

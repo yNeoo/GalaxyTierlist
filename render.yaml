@@ -16,3 +16,5 @@ services:
         sync: false
       - key: TICKET_CATEGORY_ID
         sync: false
+      - key: WAITLIST_ROLE_ID
+        sync: false
