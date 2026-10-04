@@ -58,3 +58,10 @@ export function skinUrl({ uuid, name } = {}) {
   if (!id) return null;
   return `https://mc-heads.net/body/${encodeURIComponent(id)}/300.png`;
 }
+
+/** Avatar (cabeza) para el thumbnail del embed de resultado. */
+export function avatarUrl({ uuid, name } = {}) {
+  const id = uuid || name;
+  if (!id) return null;
+  return `https://mc-heads.net/avatar/${encodeURIComponent(id)}/128.png`;
+}

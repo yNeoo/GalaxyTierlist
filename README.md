@@ -80,10 +80,13 @@ Porfavor no seas toxico, y ten paciencia, duran de 1m-2m en contestar.
 **Exige que el jugador esté verificado** — si no, el bot avisa y no registra nada. El nick que sale es el de la verificación, nunca el de Discord.
 
 ```
-[embed 1]  GalaxyTierlist
-           Distraccion
-           Tier       Modalidad    Tester
-           `HT1`      `Sword`      <@tester>
+[embed 1]  Tier Test Results 🏆  [avatar]
+           IGN: `Distraccion`
+           Region: `NA`
+           Gamemode: `Sword`
+           Tier Before: `LT2` (o N/A)
+           Tier Earned: `HT1`
+           Tester: <@tester>
 
 [embed 2]  [ skin render 300px de mc-heads.net ]
 ```

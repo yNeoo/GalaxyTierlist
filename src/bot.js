@@ -7,7 +7,7 @@ import {
 } from "discord.js";
 import {
   GAMEMODES, TIERS, REGIONS, MAX_QUEUE_SHOWN, MAX_QUEUE_SIZE,
-  modeByKey, modeName, skinUrl, TIER_COLORS
+  modeByKey, modeName, skinUrl, avatarUrl, TIER_COLORS
 } from "./config.js";
 import {
   db, upsertPlayer, logTest, getProfile, getCurrentTier,
@@ -752,21 +752,24 @@ async function handleSlash(it) {
 }
 
 // ------------------------------------------------------------ embed resultado
-export function resultEmbed({ name, tier, mode, tester, notes = "", uuid }) {
+export function resultEmbed({ name, tier, mode, tester, notes = "", uuid, region = "NA", before = null }) {
   const texto = new EmbedBuilder()
-    .setTitle("GalaxyTierlist")
-    .setDescription(`**${name}**`)
+    .setTitle("Tier Test Results 🏆")
+    .setThumbnail(avatarUrl({ uuid, name }))
     .addFields(
-      { name: "Tier", value: `\`${tier}\``, inline: true },
-      { name: "Modalidad", value: `\`${modeName(mode)}\``, inline: true },
-      { name: "Tester", value: `<@${tester}>`, inline: true }
+      { name: "IGN", value: `\`${name}\`` },
+      { name: "Region", value: `\`${region}\`` },
+      { name: "Gamemode", value: `\`${modeName(mode)}\`` },
+      { name: "Tier Before", value: `\`${before ?? "N/A"}\`` },
+      { name: "Tier Earned", value: `\`${tier}\`` },
+      { name: "Tester", value: `<@${tester}>` }
     )
     .setColor(TIER_COLORS[tier] ?? 0x7c3aed)
     .setTimestamp();
 
   if (notes) texto.setFooter({ text: notes.replace(/`/g, "'").slice(0, 200) });
 
-  // La skin va en un embed aparte para que Discord la muestre al lado.
+  // La skin en grande va en un embed aparte para que Discord la muestre al lado.
   const skin = skinUrl({ uuid, name });
   return skin ? [texto, new EmbedBuilder().setImage(skin)] : [texto];
 }
@@ -800,8 +803,10 @@ async function handleResult(it) {
     tier,
     mode,
     tester: it.user.id,
-    notes: anterior ? `${notes || "Test"}. Antes: ${anterior}` : notes,
+    notes,
     uuid: player.uuid,
+    region: player.region,
+    before: anterior,
   });
 
   if (RESULTS_CHANNEL_ID) {

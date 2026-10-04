@@ -4,7 +4,7 @@
 import { readFile } from "node:fs/promises";
 import { queuePayload, ticketEmbed, resultEmbed } from "../src/bot.js";
 import { addToQueue, setActiveMode, setQueueOpen, clearQueue, upsertPlayer, db } from "../src/db.js";
-import { skinUrl } from "../src/config.js";
+import { skinUrl, avatarUrl } from "../src/config.js";
 
 let fails = 0;
 const chk = (ok, msg) => {
@@ -102,7 +102,7 @@ line("botones: " + u.buttons.map((b) => b.label).join(", "));
 chk(u.buttons.length === 2, "jugador ve solo Unirse y Salir");
 chk(!u.buttons.some((b) => b.custom_id.startsWith("q:ticket")), "Ticket reservado a testers");
 
-// ───────────────────────────── embed de resultado
+// ───────────────────────────── embed de resultado (formato de los videos)
 console.log("\n=== EMBED DE RESULTADO ===");
 const r = resultEmbed({
   name: "Distraccion",
@@ -111,20 +111,39 @@ const r = resultEmbed({
   tester: "123",
   notes: "gano 3-0",
   uuid: "069a79f444e94726a5befca90e38aaf5",
+  region: "NA",
+  before: "LT2",
 });
 const rj = r.map((e) => e.toJSON());
 line("embed 1 titulo : " + rj[0].title);
-line("embed 1 desc   : " + rj[0].description);
+line("embed 1 thumb  : " + (rj[0].thumbnail?.url ?? "(ninguno)"));
 line("embed 1 campos : " + rj[0].fields.map((x) => `${x.name}=${x.value}`).join("  "));
 line("embed 1 color  : #" + rj[0].color.toString(16).padStart(6, "0"));
 line("embed 2 imagen : " + (rj[1]?.image?.url ?? "(ninguna)"));
 chk(rj.length === 2, "2 embeds (texto + skin)");
-chk(rj[0].description.includes("Distraccion"), "muestra el nick verificado");
-chk(rj[0].fields.some((x) => x.name === "Tier" && x.value.includes("HT1")), "campo Tier");
-chk(rj[0].fields.some((x) => x.name === "Modalidad" && x.value.includes("Sword")), "campo Modalidad");
-chk(rj[1].image.url.startsWith("https://mc-heads.net/body/"), "skin desde mc-heads");
+chk(rj[0].title === "Tier Test Results 🏆", "titulo Tier Test Results");
+chk((rj[0].thumbnail?.url ?? "").startsWith("https://mc-heads.net/avatar/"), "thumbnail con avatar");
+chk(rj[0].fields.some((x) => x.name === "IGN" && x.value.includes("Distraccion")), "campo IGN");
+chk(rj[0].fields.some((x) => x.name === "Region" && x.value.includes("NA")), "campo Region");
+chk(rj[0].fields.some((x) => x.name === "Gamemode" && x.value.includes("Sword")), "campo Gamemode");
+chk(rj[0].fields.some((x) => x.name === "Tier Before" && x.value.includes("LT2")), "campo Tier Before");
+chk(rj[0].fields.some((x) => x.name === "Tier Earned" && x.value.includes("HT1")), "campo Tier Earned");
+chk(rj[0].fields.some((x) => x.name === "Tester" && x.value.includes("<@123>")), "campo Tester");
+chk(rj[1].image.url.startsWith("https://mc-heads.net/body/"), "skin grande en 2do embed");
 chk(rj[1].image.url.includes("300.png"), "skin en 300px (grande)");
-chk(!rj[0].description.includes("<"), "el nick va en texto de embed, no en contenido");
+
+// sin tier anterior muestra N/A como en el video
+const r2 = resultEmbed({ name: "Nuevo", tier: "HT5", mode: "axe", tester: "123", uuid: null })[0].toJSON();
+chk(r2.fields.some((x) => x.name === "Tier Before" && x.value.includes("N/A")), "sin anterior = N/A");
+
+// el avatar realmente carga
+try {
+  const res = await fetch(avatarUrl({ uuid: "069a79f444e94726a5befca90e38aaf5" }));
+  const buf = Buffer.from(await res.arrayBuffer());
+  chk(res.status === 200 && buf.subarray(1, 4).toString() === "PNG", "el avatar carga y es PNG valido");
+} catch (e) {
+  chk(false, "el avatar no cargo: " + e.message);
+}
 
 // el embed de imagen solo lleva imagen
 chk(Object.keys(rj[1]).every((k) => ["type", "image"].includes(k)), "embed 2 solo tiene la imagen");
