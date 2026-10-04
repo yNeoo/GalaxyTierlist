@@ -1,254 +1,195 @@
 <!DOCTYPE html>
+<!-- Diseno propio de GalaxyTierlist inspirado en la estructura de mctiers.com/rankings. -->
 <html lang="en">
 <head>
-        <!-- Diseno original: PVPTIERLIST por KayJss (MIT). Adaptado para GalaxyTierlist. -->
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>GalaxyTierlist</title>
-
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
-
-    <!-- Tailwind CDN + config -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-          theme: {
-            extend: {
-              fontFamily: {
-                orbitron: ['Orbitron', 'sans-serif'],
-                montserrat: ['Montserrat', 'sans-serif'],
-              }
-            }
-          }
-        }
-    </script>
-
-    <!-- Özel stiller -->
-    <link rel="stylesheet" href="output.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GalaxyTierlist - Rankings</title>
+<meta name="description" content="GalaxyTierlist rankings: overall and gamemode tier lists.">
+<link rel="stylesheet" href="/style.css">
 </head>
-<body class="font-montserrat bg-[#10141c] text-white min-h-screen">
-    <div class="background-animation" aria-hidden="true"></div>
+<body>
+<header class="topnav">
+  <nav>
+    <a class="brand" href="/">GALAXY<span>TIERLIST</span></a>
+    <ul>
+      <li><a href="/" class="active">Rankings</a></li>
+    </ul>
+    <div class="search">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M10 18a7.95 7.95 0 0 0 4.9-1.69l4.39 4.4 1.42-1.42-4.4-4.39A7.95 7.95 0 0 0 18 10c0-4.41-3.59-8-8-8s-8 3.59-8 8 3.59 8 8 8zm0-14c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6 2.69-6 6-6z"/></svg>
+      <input id="search" placeholder="Search player..." autocomplete="off">
+    </div>
+  </nav>
+</header>
 
-    <header class="flex flex-col bg-[#181e2a] border-b-2 border-[#232a3a] px-4 sm:px-8 pt-6 pb-2 relative" role="banner">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-
-                <span class="font-orbitron text-3xl font-bold text-yellow-400 tracking-wide">GALAXYTIERLIST</span>
-            </div>
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2 bg-[#232a3a] px-3 py-2 rounded-lg">
-                    <span class="font-bold text-yellow-400 text-sm">SERVER IP</span>
-                    <span class="server-ip font-mono text-yellow-400 text-sm cursor-pointer select-none" title="Click to copy" aria-label="Server IP">your.server.ip</span>
-                </div>
-                <span class="ml-2" aria-label="Discord">
-                    <img src="https://cdn-icons-png.flaticon.com/512/5968/5968756.png" alt="Discord" class="w-10 h-10" />
-                </span>
-            </div>
+<main>
+  <div class="card">
+    <section class="tabs" id="tabs"></section>
+    <div class="toolbar">
+      <button id="infoBtn" type="button">ⓘ Information</button>
+      <div class="serverbox">
+        <span class="srv-logo">G</span>
+        <div>
+          <div class="srv-label">Server IP</div>
+          <button class="srv-ip" id="serverIp" type="button" title="Click to copy">your.server.ip</button>
         </div>
+      </div>
+    </div>
+    <div class="infopanel hidden" id="infoPanel">
+      <p><strong>How it works:</strong> get tested in our Discord with <code>/openqueue</code>, pick a gamemode and fight a tester. Tiers grant points: HT1 100 · LT1 80 · HT2 60 · LT2 50 · HT3 40 · LT3 30 · HT4 20 · LT4 15 · HT5 10 · LT5 5.</p>
+      <p>Overall rank = sum of your latest tier in every gamemode.</p>
+    </div>
+    <div id="board"></div>
+  </div>
+</main>
 
-        <!-- Nav (responsive için flex-wrap eklendi) -->
-        <nav class="flex flex-wrap gap-2 mt-6" role="navigation" aria-label="Category Tabs">
-            <button class="tab-btn px-4 py-2 rounded-t-lg bg-yellow-400 text-[#232a3a] font-bold shadow" data-tab="overall">Overall</button>
-            <button class="tab-btn px-4 py-2 rounded-t-lg bg-[#232a3a] text-white font-bold hover:bg-yellow-400 hover:text-[#232a3a] transition" data-tab="sword">Sword</button>
-            <button class="tab-btn px-4 py-2 rounded-t-lg bg-[#232a3a] text-white font-bold hover:bg-yellow-400 hover:text-[#232a3a] transition" data-tab="nethop">NethOP</button>
-            <button class="tab-btn px-4 py-2 rounded-t-lg bg-[#232a3a] text-white font-bold hover:bg-yellow-400 hover:text-[#232a3a] transition" data-tab="cpvp">CPVP</button>
-            <button class="tab-btn px-4 py-2 rounded-t-lg bg-[#232a3a] text-white font-bold hover:bg-yellow-400 hover:text-[#232a3a] transition" data-tab="diapot">DiaPot</button>
-            <button class="tab-btn px-4 py-2 rounded-t-lg bg-[#232a3a] text-white font-bold hover:bg-yellow-400 hover:text-[#232a3a] transition" data-tab="mace">Mace</button>
-            <button class="tab-btn px-4 py-2 rounded-t-lg bg-[#232a3a] text-white font-bold hover:bg-yellow-400 hover:text-[#232a3a] transition" data-tab="axe">Axe</button>
-        </nav>
-    </header>
+<footer>Copyrights © GalaxyTierlist 2026</footer>
 
-    <main class="bg-[#10141c] min-h-screen py-12">
-    <section id="tab-overall" class="tab-content w-full max-w-5xl mx-auto px-0 grid grid-cols-1 gap-8"></section>
-    <section id="tab-sword" class="tab-content max-w-6xl mx-auto hidden"></section>
-    <section id="tab-nethop" class="tab-content max-w-6xl mx-auto hidden"></section>
-    <section id="tab-cpvp" class="tab-content max-w-6xl mx-auto hidden"></section>
-    <section id="tab-diapot" class="tab-content max-w-6xl mx-auto hidden"></section>
-    <section id="tab-mace" class="tab-content max-w-6xl mx-auto hidden"></section>
-    <section id="tab-axe" class="tab-content max-w-6xl mx-auto hidden"></section>
-    </main>
+<script>
+const ORDER = ["HT1","LT1","HT2","LT2","HT3","LT3","HT4","LT4","HT5","LT5"];
+const TIER_COLORS = { HT1:"#ff4d4d", LT1:"#ff8080", HT2:"#ff9f43", LT2:"#f7b96c", HT3:"#ffe066", LT3:"#f3e6a6", HT4:"#b6ff5c", LT4:"#d3f5a6", HT5:"#7fc3ff", LT5:"#c2ddff" };
+const MODES = [
+  { key: "overall", name: "Overall", icon: "/tier_icons/overall.svg" },
+  { key: "sword", name: "Sword", icon: "/tier_icons/sword.svg" },
+  { key: "nethop", name: "NethOP", icon: "/tier_icons/nethop.svg" },
+  { key: "cpvp", name: "CPVP", icon: "/tier_icons/cpvp.svg" },
+  { key: "diapot", name: "DiaPot", icon: "/tier_icons/diapot.svg" },
+  { key: "mace", name: "Mace", icon: "/tier_icons/mace.svg" },
+  { key: "axe", name: "Axe", icon: "/tier_icons/axe.svg" }
+];
+let DATA = {};
+let current = new URLSearchParams(location.search).get("mode") || "overall";
+if (!MODES.some(m => m.key === current)) current = "overall";
 
-    <footer class="w-full bg-[#181e2a]">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between py-6 px-4">
-            <span class="text-gray-400 text-sm text-center md:text-left">
-                GalaxyTierlist &copy; 2026
-            </span>
-            <div class="flex items-center gap-4 mt-4 md:mt-0">
-                <span class="hover:scale-110 transition">
-                    <img src="https://cdn-icons-png.flaticon.com/512/5968/5968756.png" alt="Discord" class="w-8 h-8" />
-                </span>
-                <span class="text-xs text-gray-500">v1.0</span>
-            </div>
-        </div>
-    </footer>
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const avatar = (n, s=32) => `https://minotar.net/avatar/${encodeURIComponent(n)}/${s}`;
+const badgeOf = (p) => (p.badges && p.badges[0] ? p.badges[0].toUpperCase() : "");
+const tierNum = (b) => ({HT1:1,LT1:1,HT2:2,LT2:2,HT3:3,LT3:3,HT4:4,LT4:4,HT5:5,LT5:5}[b] ?? 9);
 
-    <!-- Script: kopyala + arama filtreleme + tab switching -->
-    <script>
-    // IP copy
-    function copyServerIP() {
-        const el = document.querySelector('.server-ip');
-        if (!el) return;
-        const ip = el.textContent.trim();
-        navigator.clipboard?.writeText(ip).then(() => {
-            el.classList.add('copied');
-            const prev = el.textContent;
-            el.textContent = 'Copied!';
-            setTimeout(() => { el.classList.remove('copied'); el.textContent = ip; }, 1200);
-        }).catch(()=>{ /* ignore */ });
+function renderTabs() {
+  document.getElementById("tabs").innerHTML = MODES.map(m => `
+    <a href="?mode=${m.key}" data-mode="${m.key}" class="${m.key === current ? "active" : ""}">
+      <img src="${m.icon}" width="30" height="30" alt="${esc(m.name)}">
+      <strong>${esc(m.name)}</strong>
+    </a>`).join("");
+  document.querySelectorAll("#tabs a").forEach(a => a.addEventListener("click", e => {
+    e.preventDefault();
+    current = a.dataset.mode;
+    history.replaceState(null, "", current === "overall" ? "/" : `?mode=${current}`);
+    renderTabs();
+    renderBoard();
+  }));
+}
+
+function overallRows() {
+  const map = {};
+  for (const mode of Object.keys(DATA)) {
+    for (const t of Object.values(DATA[mode] ?? {})) {
+      for (const p of t) {
+        (map[p.name] ??= { name: p.name, region: p.region ?? "NA", points: 0, tiers: {} });
+        map[p.name].points += p.points || 0;
+        map[p.name].tiers[mode] = badgeOf(p);
+      }
     }
-    document.addEventListener('click', function(e){
-        if (e.target.closest('.server-ip')) copyServerIP();
-    });
+  }
+  return Object.values(map).sort((a, b) => b.points - a.points);
+}
 
-    // Tab switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('bg-yellow-400','text-[#232a3a]','shadow'));
-            this.classList.add('bg-yellow-400','text-[#232a3a]','shadow');
-            const tab = this.getAttribute('data-tab');
-            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.add('hidden'));
-            document.getElementById('tab-' + tab).classList.remove('hidden');
-        });
-    });
-    // Default tab
-    document.getElementById('tab-overall').classList.remove('hidden');
-
-    // Dynamic tier rendering from API
-    async function loadTiers() {
-        try {
-            const res = await fetch('/api/tiers');
-            if (!res.ok) {
-                document.querySelectorAll('.tab-content').forEach(tc => {
-                    tc.innerHTML = "<div class='text-center text-red-400 font-bold py-8'>Could not fetch tier data.</div>";
-                });
-                return;
-            }
-            const data = await res.json();
-            for (const tab of ['overall','sword','nethop','cpvp','diapot','mace','axe']) {
-                const tabSection = document.getElementById('tab-' + tab);
-                if (!tabSection) continue;
-                tabSection.innerHTML = '';
-                if (!data[tab] && tab !== 'overall') {
-                    tabSection.innerHTML = "<div class='text-center text-gray-400 py-8'>No data for this category.</div>";
-                    continue;
-                }
-                // OVERALL: Modern leaderboard design
-                if (tab === 'overall') {
-                    const playerMap = {};
-                    for (const kit in data) {
-                        for (const tier in data[kit]) {
-                            for (const p of data[kit][tier]) {
-                                if (!playerMap[p.name]) {
-                                    playerMap[p.name] = {
-                                        name: p.name,
-                                        totalPoints: 0,
-                                        kits: {}
-                                    };
-                                }
-                                playerMap[p.name].totalPoints += p.points;
-                                if (!playerMap[p.name].kits[kit]) playerMap[p.name].kits[kit] = [];
-                                playerMap[p.name].kits[kit].push({
-                                    badge: p.badges && p.badges[0] ? p.badges[0] : '',
-                                    tier: tier
-                                });
-                            }
-                        }
-                    }
-                    const allPlayers = Object.values(playerMap).sort((a, b) => b.totalPoints - a.totalPoints);
-                    if (allPlayers.length) {
-                        tabSection.innerHTML = `
-                        <div class="rounded-2xl shadow-2xl bg-[#181e2a] p-0 w-full">
-                            <div class="flex items-center px-8 pt-8 pb-4 border-b border-[#232a3a]">
-                                <span class="text-2xl font-bold text-yellow-400 flex items-center gap-2">
-                                    <svg class="w-7 h-7 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 17.75l-6.172 3.245 1.179-6.873L2 9.755l6.908-1.004L12 2.5l3.092 6.251L22 9.755l-5.007 4.367 1.179 6.873z"/></svg>
-                                    Overall Leaderboard
-                                </span>
-                            </div>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full bg-transparent">
-                                    <thead>
-                                        <tr class="text-gray-400 text-xs uppercase tracking-wider border-b border-[#232a3a]">
-                                            <th class="py-3 px-4 text-left">#</th>
-                                            <th class="py-3 px-4 text-left">Player</th>
-                                            <th class="py-3 px-4 text-left">Points</th>
-                                            <th class="py-3 px-4 text-left">Tiers</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${allPlayers.map((p, i) => `
-                                            <tr class="group ${i === 0 ? 'bg-gradient-to-r from-yellow-400/10 to-transparent' : i === 1 ? 'bg-gradient-to-r from-gray-300/10 to-transparent' : i === 2 ? 'bg-gradient-to-r from-orange-400/10 to-transparent' : 'hover:bg-[#232a3a]'} transition">
-                                                <td class="py-4 px-4 font-bold text-xl ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-400'}">${i + 1}.</td>
-                                                <td class="py-4 px-4 flex items-center gap-4">
-                                                    <img src="https://minotar.net/avatar/${p.name}/48" alt="${p.name}" class="rounded-lg shadow w-12 h-12" />
-                                                    <div>
-                                                        <div class="font-bold text-lg ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-white'}">${p.name}</div>
-                                                        <div class="text-xs text-gray-400 font-semibold mt-1 flex flex-wrap gap-1">
-                                                            ${Object.entries(p.kits).map(([kit, badges]) => `
-                                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#232a3a] text-yellow-300 font-bold text-xs">
-                                                                    <span>${kit.charAt(0).toUpperCase() + kit.slice(1)}</span>
-                                                                    ${badges.map(b => `
-                                                                        <span class='badge ${b.badge} mx-1 bg-yellow-400/80 text-[#232a3a] px-2 py-0.5 rounded font-bold'>${b.badge.toUpperCase()}</span>
-                                                                    `).join('')}
-                                                                </span>
-                                                            `).join('')}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="py-4 px-4 font-bold text-yellow-400 text-lg">${p.totalPoints}</td>
-                                                <td class="py-4 px-4">
-                                                    <div class="flex flex-wrap gap-2">
-                                                        ${Object.entries(p.kits).map(([kit, badges]) => `
-                                                            ${badges.map(b => `
-                                                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-xl bg-gradient-to-r from-yellow-400/20 to-[#232a3a] text-yellow-300 font-bold text-xs shadow">
-                                                                    <span>${kit.charAt(0).toUpperCase() + kit.slice(1)}</span>
-                                                                    <span class='badge ${b.badge} mx-1 bg-yellow-400/80 text-[#232a3a] px-2 py-0.5 rounded font-bold'>${b.badge.toUpperCase()}</span>
-                                                                </span>
-                                                            `).join('')}
-                                                        `).join('')}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        `;
-                    } else {
-                        tabSection.innerHTML = "<div class='text-center text-gray-400 py-8'>No players found.</div>";
-                    }
-                } else {
-                    // Render tier columns
-                    const tiers = data[tab];
-                    const tierOrder = ['tier1','tier2','tier3','tier4','tier5'];
-                    tabSection.innerHTML = `<div class='grid grid-cols-5 gap-6'>${tierOrder.map((tier,idx)=>{
-                        const color = idx===0?'bg-[#3a2e13]':idx===2?'bg-[#3a2e13]':'bg-[#232a3a]';
-                        const trophy = idx===0?'🏆':idx===1?'🥈':idx===2?'🥉':'';
-                        const tierPlayers = tiers[tier]||[];
-                        return `<div class='tier-col ${color} rounded-xl shadow p-2'>
-                            <div class='flex items-center gap-2 mb-2'><span class='text-yellow-400 text-2xl'>${trophy}</span><span class='font-bold text-yellow-400 text-xl'>Tier ${idx+1}</span></div>
-                            <div class='tier-list'>${tierPlayers.map(p=>`
-                                <div class='tier-player flex items-center gap-2 mb-1'>
-                                    <img src='https://minotar.net/avatar/${p.name}/32' class='rounded' alt='${p.name}' />
-                                    <span class='font-bold text-white'>${p.name}</span>
-                                    <span class='text-xs text-gray-400 font-bold'>${p.points}p</span>
-                                    <span class='badges'>${p.badges.map(b=>`<span class='badge ${b} mx-1'>${b.toUpperCase()}</span>`).join('')}</span>
-                                </div>`).join('')}
-                            </div>
-                        </div>`;
-                    }).join('')}</div>`;
-                }
-            }
-        } catch (err) {
-            document.querySelectorAll('.tab-content').forEach(tc => {
-                tc.innerHTML = "<div class='text-center text-red-400 font-bold py-8'>An error occurred.</div>";
-            });
-            console.error('Error loading tiers:', err);
-        }
+function modeGroups(mode) {
+  const groups = {};
+  for (const t of Object.values(DATA[mode] ?? {})) {
+    for (const p of t) {
+      const b = badgeOf(p);
+      (groups[b] ??= []).push(p);
     }
-    loadTiers();
-    setInterval(loadTiers, 10000);
-    </script>
+  }
+  for (const k of Object.keys(groups)) groups[k].sort((a, b) => a.name.localeCompare(b.name));
+  return ORDER.filter(t => groups[t]).map(t => [t, groups[t]]);
+}
+
+function renderBoard() {
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const board = document.getElementById("board");
+  if (current === "overall") {
+    const rows = overallRows().filter(r => !q || r.name.toLowerCase().includes(q));
+    const head = `<div class="thead"><span>#</span><span class="c-player">Player</span><span class="c-region">Region</span><span class="c-tiers">Tiers</span></div>`;
+    if (!rows.length) { board.innerHTML = head + `<div class="empty">No players ranked yet.</div>`; return; }
+    board.innerHTML = head + rows.map((r, i) => `
+      <div class="row">
+        <span class="rank">${i + 1}</span>
+        <span class="c-player"><img src="${avatar(r.name, 32)}" alt="" loading="lazy"><a class="plink" href="?player=${encodeURIComponent(r.name)}"><span class="pname">${esc(r.name)}<small>${r.points} pts</small></span></a></span>
+        <span class="c-region">${esc(r.region)}</span>
+        <span class="c-tiers">${Object.entries(r.tiers).map(([m, b]) => {
+          const meta = MODES.find(x => x.key === m);
+          return `<span class="tierpill"><img src="${meta ? meta.icon : ""}" alt="" width="14" height="14"><b style="color:${TIER_COLORS[b] || "#fff"}">${esc(b)}</b></span>`;
+        }).join("")}</span>
+      </div>`).join("");
+    return;
+  }
+  const groups = modeGroups(current).map(([t, ps]) => [t, ps.filter(p => !q || p.name.toLowerCase().includes(q))]).filter(([, ps]) => ps.length);
+  if (!groups.length) { board.innerHTML = `<div class="empty">No players ranked in ${esc(current.toUpperCase())} yet.</div>`; return; }
+  board.innerHTML = groups.map(([t, ps]) => `
+    <div class="tierblock">
+      <h3 style="color:${TIER_COLORS[t]}">${esc(t)} <span class="count">${ps.length}</span></h3>
+      <div class="chips">${ps.map(p => `
+        <a class="chip" href="?player=${encodeURIComponent(p.name)}"><img src="${avatar(p.name, 32)}" alt="" loading="lazy">${esc(p.name)}<small>${esc(p.region ?? "NA")}</small></a>`).join("")}
+      </div>
+    </div>`).join("");
+}
+
+document.getElementById("search").addEventListener("input", renderBoard);
+document.getElementById("infoBtn").addEventListener("click", () => document.getElementById("infoPanel").classList.toggle("hidden"));
+document.getElementById("serverIp").addEventListener("click", async (e) => {
+  const el = e.currentTarget;
+  try { await navigator.clipboard.writeText(el.textContent.trim()); } catch {}
+  const prev = el.textContent;
+  el.textContent = "Copied!";
+  setTimeout(() => { el.textContent = prev; }, 1200);
+});
+
+(async function init() {
+  try {
+    DATA = await (await fetch("/api/tiers", { cache: "no-store" })).json();
+  } catch { DATA = {}; }
+  renderTabs();
+  const qp = new URLSearchParams(location.search).get("player");
+  if (qp) await renderProfile(qp);
+  else renderBoard();
+  setInterval(async () => {
+    try {
+      DATA = await (await fetch("/api/tiers", { cache: "no-store" })).json();
+      const qp2 = new URLSearchParams(location.search).get("player");
+      if (qp2) await renderProfile(qp2);
+      else renderBoard();
+    } catch {}
+  }, 15000);
+});
+
+async function renderProfile(name) {
+  const board = document.getElementById("board");
+  let data = null;
+  try {
+    const r = await fetch(`/api/profile/${encodeURIComponent(name)}`);
+    if (r.ok) data = await r.json();
+  } catch {}
+  if (!data) { board.innerHTML = `<a class="back" href="/">← Back to rankings</a><div class="empty">No ranking data for ${esc(name)}.</div>`; return; }
+  const { player, current, history } = data;
+  board.innerHTML = `
+    <a class="back" href="/">← Back to rankings</a>
+    <div class="profile">
+      <img src="https://mc-heads.net/body/${encodeURIComponent(player.name)}/300.png" alt="${esc(player.name)}" loading="lazy">
+      <div>
+        <h2>${esc(player.name)}</h2>
+        <div class="muted">${esc(player.region)}</div>
+        <div class="pgrid">${MODES.filter(m => m.key !== "overall").map(m => {
+          const v = current[m.key];
+          return `<div class="pstat"><div class="pv" style="color:${TIER_COLORS[v] || "#555"}">${esc(v || "—")}</div><div class="pk">${esc(m.name)}</div></div>`;
+        }).join("")}</div>
+      </div>
+    </div>
+    <h3>Recent Tests</h3>
+    <div class="hist">${history.slice(0, 10).map(h => `<div class="hrow"><span>${esc(new Date(h.timestamp).toLocaleString())}</span><span>${esc(String(h.gamemode).toUpperCase())} — <b style="color:${TIER_COLORS[h.tier] || "#fff"}">${esc(h.tier)}</b></span></div>`).join("") || "<div class='empty'>No history.</div>"}</div>`;
+}
+</script>
 </body>
 </html>

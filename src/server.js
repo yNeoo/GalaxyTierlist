@@ -45,6 +45,7 @@ export function createServer() {
           .sort((a, b) => a.name.localeCompare(b.name))
           .map((p) => ({
             name: p.name,
+            region: p.region,
             badges: [p.tier.toLowerCase()],
             points: TIER_POINTS[p.tier] ?? 0,
           }));

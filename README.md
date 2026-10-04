@@ -108,7 +108,7 @@ Un solo embed. Si el `/result` se usa en el canal de resultados no se reenvía (
 | `/leave` | Salir de la cola. |
 
 ### Web
-Pestañas Overall + Sword, NethOP, CPVP, DiaPot, Mace, Axe. Se refresca sola cada 10s. Diseño base de PVPTIERLIST (KayJss, MIT) adaptado a GalaxyTierlist. API: `/api/tiers` (compat con el frontend), `/api/mode/list`, `/api/mode/:gamemode`, `/api/mode/overall`, `/api/queue?mode=:mode`, `/api/profile/:name`.
+Rankings estilo mctiers.com/rankings/overall con código propio: pestañas Overall + Sword, NethOP, CPVP, DiaPot, Mace, Axe, buscador, tabla # / Player / Region / Tiers, perfil por jugador (`?player=Nombre`), botón Information, caja de Server IP y auto-refresh cada 15s. API: `/api/tiers` (forma por modo), `/api/profile/:name`, `/api/mode/*`, `/api/queue?mode=:mode`.
 
 ## 5. Tests
 ```bash
