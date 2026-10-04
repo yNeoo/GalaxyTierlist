@@ -13,7 +13,7 @@ html, body { margin: 0; padding: 0; }
 body {
   background: radial-gradient(circle at 50% -10%, #1a0e14 0%, var(--bg) 55%) fixed, var(--bg);
   color: var(--text);
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: Geist, Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   min-height: 100vh;
 }
 
@@ -32,8 +32,19 @@ body {
   border-radius: var(--radius);
   padding: 10px 16px;
 }
-.brand { font-weight: 800; font-size: 1.25rem; letter-spacing: .06em; color: #fff; text-decoration: none; }
-.brand span { color: var(--accent); }
+.brand {
+  font-family: Geist, Inter, system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.35rem;
+  letter-spacing: -.02em;
+  text-decoration: none;
+  background: linear-gradient(90deg, #e9d5ff, #a78bfa 35%, #7c3aed 70%, #4c1d95);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.brand span { color: transparent; -webkit-text-fill-color: transparent; }
 .topnav ul { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }
 .topnav ul a { color: var(--muted); text-decoration: none; font-weight: 600; padding: 8px 12px; border-radius: 8px; }
 .topnav ul a:hover { color: var(--text); }

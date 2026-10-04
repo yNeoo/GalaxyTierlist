@@ -15,7 +15,9 @@ const css = await readFile(new URL("../public/style.css", import.meta.url), "utf
 
 // --- marca propia + credito como la vez pasada (en comentario) ---
 chk(html.includes("<title>GalaxyTierlist - Rankings</title>"), "titulo GalaxyTierlist - Rankings");
-chk(html.includes("GALAXY") && html.includes("TIERLIST"), "marca en el nav");
+chk(html.includes("fonts.cdnfonts.com/css/geist"), "fuente Geist cargada");
+chk(css.includes("font-family: Geist"), "Geist como fuente principal");
+chk(css.includes("linear-gradient(90deg, #e9d5ff, #a78bfa"), "marca con degradado galaxia");
 const visible = html.replace(/<!--[\s\S]*?-->/g, "");
 chk(!/mctiers/i.test(visible), "sin marca MCTiers visible");
 chk(/mctiers/i.test(html), "credito a la referencia en comentario");
