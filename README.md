@@ -27,33 +27,42 @@ npm start
 3. En Environment agrega: DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID, RESULTS_CHANNEL_ID.
 4. Deploy. Te da URL tipo `https://galaxytierlist.onrender.com`.
 
-## 4. Uso — panel de Whitelist
+## 4. Uso — cola y resultados
 
 **Modalidades:** Sword, NethOP, CPVP, DiaPot, Mace, Axe.
 
 ### Poner en marcha
-1. `/setup` — publica el panel en el canal y fíjalo con 📌.
-2. `/open` — muestra el selector de modalidad. Al elegir una, esa whitelist queda **abierta** y es la activa. (También: `/open modalidad:Sword` directo.)
-3. `/start` — te marca como tester activo (verás los botones `Open` y `Ticket`).
+1. `/start` — te marca como tester activo (verás el botón `Ticket`).
+2. `/openqueue` — muestra el selector de modalidad.
+3. `/openqueue modalidad:Sword` — abre la cola de esa modalidad y publica el panel. Fíjalo con 📌.
 
-### El panel
-El embed muestra la **modalidad activa**, si está abierta o cerrada, cuántos hay en cola, y los **puestos 1 a 5** con el tag de los primeros que se unieron (en orden de llegada). Si hay más de 5, el pie avisa de cuántos sobran.
+`/openqueue` publica el panel si no existe, y si ya existe lo **actualiza** en vez de duplicarlo.
 
-Botones:
+### El panel de la cola
+Embed titulado **GalaxyTierlist** con los **puestos 1 a 5** en orden de llegada:
+
+```
+GalaxyTierlist
+1. `Distraccion` · @user
+2. `Notch` · @user
+3. `Zenith` · @user
+4. `Squids` · @user
+5. `Betatest` · @user
+🗡️ Sword · Abierta · 7 en cola · +2 mas
+```
+
+Botones (solo 3):
 | Boton | Quien | Que hace |
 |---|---|---|
-| **Unirse** | todos | Entra a la whitelist de la modalidad activa. **Exige cuenta verificada.** |
-| **Salir** | todos | Sale de la whitelist. |
-| **Open** | testers | Abre el selector de modalidad. |
-| **Ticket** | testers | Saca al **#1** y le abre un ticket privado con el embed de=test. |
-| **Verify Account** | todos | Modal de verificación (IGN + región). |
+| **Unirse** | todos | Entra a la cola. Si no está verificado, se abre el modal de verificación y al terminar entra solo. |
+| **Salir** | todos | Sale de la cola. |
+| **Ticket** | **solo testers** | Saca al **#1** y le abre un ticket privado. |
 
-Los jugadores que no son testers solo ven `Unirse` y `Salir`: el panel se re-renderiza según quien pulse.
+Los jugadores que no son testers solo ven `Unirse` y `Salir`: el panel se re-renderiza según quién pulse.
 
 ### El flujo
-1. Jugador pulsa **Verify Account** → ingressa IGN + región. Se valida contra la API de Mojang (si el IGN no existe, se rechaza).
-2. Pulsa **Unirse**. Sin verificar, el bot responde: *"Primero tienes que verificar tu cuenta… No se puede unir a la whitelist sin verificar."*
-3. Un tester pulsa **Ticket** → se crea el canal `test-<modo>-<ign>` y se le envía este embed:
+1. Jugador pulsa **Unirse**. Si no está verificado, el bot abre el modal (IGN + región) y valida el IGN contra la API de Mojang. Al confirmar, **entra directo a la cola** en el puesto que le toque.
+2. Un tester pulsa **Ticket** → se crea el canal `test-<modo>-<ign>` (privado) y se le envía:
 
 ```
 GalaxyTiers
@@ -63,23 +72,34 @@ La modalidad es Sword.
 Porfavor no seas toxico, y ten paciencia, duran de 1m-2m en contestar.
 ```
 
-4. Pelean, y el tester cierra con `/close jugador:@user gamemode:sword tier:HT3` → aparece al instante en la web.
+3. Pelean y el tester cierra con `/result jugador:@user gamemode:sword tier:HT3`.
+
+### `/result`
+**Exige que el jugador esté verificado** — si no, el bot avisa y no registra nada. El nick que sale es el de la verificación, nunca el de Discord.
+
+```
+[embed 1]  GalaxyTierlist
+           Distraccion
+           Tier       Modalidad    Tester
+           `HT1`      `Sword`      <@tester>
+
+[embed 2]  [ skin render 300px de mc-heads.net ]
+```
+
+Van como dos embeds para que la skin quede **al lado** en escritorio (y apilada en móvil). El embed se envía también al canal `RESULTS_CHANNEL_ID`.
 
 ### Comandos
 | Comando | Descripción |
 |---|---|
-| `/open [modalidad]` | Abre la whitelist y elige modality. |
-| `/setup` | Publica el panel (ManageGuild). |
-| `/verify` | Verifica tu cuenta sin usar el botón. |
-| `/queue open\|close\|status [modalidad]` | Control de cola. |
+| `/openqueue [modalidad]` | Abre la cola y publica/actualiza el panel. |
+| `/queue status\|close [modalidad]` | Ver el estado de todas las colas o cerrar una. |
+| `/verify` | Verifica tu cuenta sin pasar por el botón. |
 | `/start` / `/stop` | Tester activo / salir. |
-| `/next [gamemode]` | Saca al siguiente y abre ticket. |
-| `/close jugador gamemode tier [notas]` | Cierra test y asigna tier. |
-| `/result ign gamemode tier` | Alias rápido de `/close`. |
+| `/result jugador gamemode tier [notas]` | **Registra el tier.** El jugador debe estar verificado. |
 | `/skip jugador [modalidad]` | Saca a alguien sin testear. |
 | `/profile ign` | Ver perfil. |
 | `/tierwipe ign` | Borra los tiers de un jugador (ManageGuild). |
-| `/leave` | Salir de la whitelist. |
+| `/leave` | Salir de la cola. |
 
 ### Web
 Se refresca sola cada 15s. Perfil: `/?player=Nombre`. API: `/api/mode/list`, `/api/mode/:gamemode`, `/api/mode/overall`, `/api/queue?mode=:mode`, `/api/profile/:name`.
