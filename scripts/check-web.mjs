@@ -17,7 +17,8 @@ const css = await readFile(new URL("../public/style.css", import.meta.url), "utf
 chk(html.includes("<title>GalaxyTierlist - Rankings</title>"), "titulo GalaxyTierlist - Rankings");
 chk(html.includes("fonts.cdnfonts.com/css/geist"), "fuente Geist cargada");
 chk(html.includes("https://mctiers.com/tier_icons/sword.svg"), "iconos de mctiers enlazados");
-chk(html.includes('key: "cpvp", name: "CPVP", icon: "/tier_icons/cpvp.svg"'), "cpvp usa icono propio (mctiers no tiene)");
+chk(html.includes('key: "cpvp", name: "CPVP", icon: "https://mctiers.com/tier_icons/vanilla.svg"'), "cpvp usa el icono vanilla de mctiers");
+chk(html.includes('key: "diapot", name: "DiaPot", icon: "https://mctiers.com/tier_icons/pot.svg"'), "diapot usa el icono pot de mctiers");
 chk(html.includes("Press+Start+2P"), "fuente pixel para la marca");
 chk(html.includes("<kbd>/</kbd>"), "atajo / en el buscador");
 chk(css.includes("font-family: Geist"), "Geist como fuente principal");
