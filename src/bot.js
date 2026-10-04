@@ -7,7 +7,7 @@ import {
 } from "discord.js";
 import {
   GAMEMODES, TIERS, REGIONS, MAX_QUEUE_SHOWN, MAX_QUEUE_SIZE,
-  modeByKey, modeName, skinUrl, avatarUrl, TIER_COLORS
+  modeByKey, modeName, headUrl, TIER_COLORS
 } from "./config.js";
 import {
   db, upsertPlayer, logTest, getProfile, getCurrentTier,
@@ -154,7 +154,12 @@ export function createBot() {
     await refreshAllPanels(client).catch(() => {});
   });
 
+  // Si Discord reintenta una interaccion lenta, no la procesa dos veces.
+  const seenInteractions = new Set();
   client.on("interactionCreate", async (it) => {
+    if (seenInteractions.has(it.id)) return;
+    seenInteractions.add(it.id);
+    setTimeout(() => seenInteractions.delete(it.id), 120_000);
     try {
       markTester(it);
       if (it.isChatInputCommand()) await handleSlash(it);
@@ -753,10 +758,9 @@ async function handleSlash(it) {
 
 // ------------------------------------------------------------ embed resultado
 export function resultEmbed({ name, tier, mode, tester, notes = "", uuid, region = "NA", before = null }) {
-  // Un solo embed: campos + avatar arriba y la skin en grande abajo.
+  // Un solo embed: campos + solo la cabeza en grande.
   const texto = new EmbedBuilder()
     .setTitle("Tier Test Results 🏆")
-    .setThumbnail(avatarUrl({ uuid, name }))
     .addFields(
       { name: "IGN", value: `\`${name}\`` },
       { name: "Region", value: `\`${region}\`` },
@@ -765,7 +769,7 @@ export function resultEmbed({ name, tier, mode, tester, notes = "", uuid, region
       { name: "Tier Earned", value: `\`${tier}\`` },
       { name: "Tester", value: `<@${tester}>` }
     )
-    .setImage(skinUrl({ uuid, name }))
+    .setImage(headUrl({ uuid, name }))
     .setColor(TIER_COLORS[tier] ?? 0x7c3aed)
     .setTimestamp();
 
@@ -809,7 +813,9 @@ async function handleResult(it) {
     before: anterior,
   });
 
-  if (RESULTS_CHANNEL_ID) {
+  // Si el comando ya se uso en el canal de resultados, la respuesta basta:
+  // mandarlo otra vez al mismo canal es lo que lo mostraba duplicado.
+  if (RESULTS_CHANNEL_ID && it.channelId !== RESULTS_CHANNEL_ID) {
     const rc = await it.guild.channels.fetch(RESULTS_CHANNEL_ID).catch(() => null);
     if (rc?.isTextBased()) await rc.send({ embeds }).catch(() => {});
   }

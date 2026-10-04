@@ -59,9 +59,9 @@ export function skinUrl({ uuid, name } = {}) {
   return `https://mc-heads.net/body/${encodeURIComponent(id)}/300.png`;
 }
 
-/** Avatar (cabeza) para el thumbnail del embed de resultado. */
-export function avatarUrl({ uuid, name } = {}) {
+/** Cabeza 3D para la imagen del embed de resultado. */
+export function headUrl({ uuid, name } = {}) {
   const id = uuid || name;
   if (!id) return null;
-  return `https://mc-heads.net/avatar/${encodeURIComponent(id)}/128.png`;
+  return `https://mc-heads.net/head/${encodeURIComponent(id)}/512.png`;
 }

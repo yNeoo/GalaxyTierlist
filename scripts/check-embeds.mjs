@@ -4,7 +4,7 @@
 import { readFile } from "node:fs/promises";
 import { queuePayload, ticketEmbed, resultEmbed } from "../src/bot.js";
 import { addToQueue, setActiveMode, setQueueOpen, clearQueue, upsertPlayer, db } from "../src/db.js";
-import { skinUrl, avatarUrl } from "../src/config.js";
+import { headUrl } from "../src/config.js";
 
 let fails = 0;
 const chk = (ok, msg) => {
@@ -116,52 +116,44 @@ const r = resultEmbed({
 });
 const rj = r.map((e) => e.toJSON());
 line("titulo : " + rj[0].title);
-line("thumb  : " + (rj[0].thumbnail?.url ?? "(ninguno)"));
 line("campos : " + rj[0].fields.map((x) => `${x.name}=${x.value}`).join("  "));
 line("imagen : " + (rj[0].image?.url ?? "(ninguna)"));
 line("color  : #" + rj[0].color.toString(16).padStart(6, "0"));
-chk(rj.length === 1, "un solo embed (skin adentro, no aparte)");
+chk(rj.length === 1, "un solo embed");
 chk(rj[0].title === "Tier Test Results 🏆", "titulo Tier Test Results");
-chk((rj[0].thumbnail?.url ?? "").startsWith("https://mc-heads.net/avatar/"), "thumbnail con avatar");
+chk(rj[0].thumbnail === undefined, "sin thumbnail (solo la cabeza en grande)");
 chk(rj[0].fields.some((x) => x.name === "IGN" && x.value.includes("Distraccion")), "campo IGN");
 chk(rj[0].fields.some((x) => x.name === "Region" && x.value.includes("NA")), "campo Region");
 chk(rj[0].fields.some((x) => x.name === "Gamemode" && x.value.includes("Sword")), "campo Gamemode");
 chk(rj[0].fields.some((x) => x.name === "Tier Before" && x.value.includes("LT2")), "campo Tier Before");
 chk(rj[0].fields.some((x) => x.name === "Tier Earned" && x.value.includes("HT1")), "campo Tier Earned");
 chk(rj[0].fields.some((x) => x.name === "Tester" && x.value.includes("<@123>")), "campo Tester");
-chk((rj[0].image?.url ?? "").startsWith("https://mc-heads.net/body/"), "skin grande en el mismo embed");
-chk((rj[0].image?.url ?? "").includes("300.png"), "skin en 300px (grande)");
+chk((rj[0].image?.url ?? "").startsWith("https://mc-heads.net/head/"), "solo la cabeza, no el cuerpo");
+chk((rj[0].image?.url ?? "").includes("512.png"), "cabeza en grande (512)");
 
 // sin tier anterior muestra N/A como en el video
 const r2 = resultEmbed({ name: "Nuevo", tier: "HT5", mode: "axe", tester: "123", uuid: null })[0].toJSON();
 chk(r2.fields.some((x) => x.name === "Tier Before" && x.value.includes("N/A")), "sin anterior = N/A");
 
-// el avatar realmente carga
-try {
-  const res = await fetch(avatarUrl({ uuid: "069a79f444e94726a5befca90e38aaf5" }));
-  const buf = Buffer.from(await res.arrayBuffer());
-  chk(res.status === 200 && buf.subarray(1, 4).toString() === "PNG", "el avatar carga y es PNG valido");
-} catch (e) {
-  chk(false, "el avatar no cargo: " + e.message);
-}
 
 
 
-// ───────────────────────────── la skin realmente carga
-console.log("\n=== la skin responde? ===");
-const url = skinUrl({ uuid: "069a79f444e94726a5befca90e38aaf5", name: "Notch" });
+
+// ───────────────────────────── la cabeza realmente carga
+console.log("\n=== la cabeza responde? ===");
+const url = headUrl({ uuid: "069a79f444e94726a5befca90e38aaf5", name: "Notch" });
 try {
   const res = await fetch(url);
   const buf = Buffer.from(await res.arrayBuffer());
   const png = buf.length > 8 && buf.subarray(1, 4).toString() === "PNG";
   line(`${res.status}  ${buf.length}b  png=${png}  ${url}`);
-  chk(res.status === 200 && png, "la imagen de skin carga y es PNG valido");
+  chk(res.status === 200 && png, "la imagen de cabeza carga y es PNG valido");
 } catch (e) {
-  chk(false, "la skin no cargo: " + e.message);
+  chk(false, "la cabeza no cargo: " + e.message);
 }
 // sin uuid debe usar el nombre
-chk(skinUrl({ name: "Notch" }) === "https://mc-heads.net/body/Notch/300.png", "sin uuid usa el nombre");
-chk(skinUrl({}) === null, "sin datos no genera url");
+chk(headUrl({ name: "Notch" }) === "https://mc-heads.net/head/Notch/512.png", "sin uuid usa el nombre");
+chk(headUrl({}) === null, "sin datos no genera url");
 
 // ───────────────────────────── embed de ticket
 console.log("\n=== EMBED DE TICKET ===");
@@ -232,6 +224,11 @@ chk(src.includes("Cerrando ticket en 10 segundos"), "autocierre tras /result con
 
 // el /result ya no manda texto con el link de la web
 chk(!src.includes("galaxytierlist.onrender.com/?player="), "sin mensaje Web: en el resultado");
+
+// ───────────────────────────── sin resultados duplicados
+console.log("\n=== sin duplicados ===");
+chk(src.includes("it.channelId !== RESULTS_CHANNEL_ID"), "no reenvia si ya esta en el canal");
+chk(src.includes("seenInteractions"), "interacciones repetidas se ignoran");
 
 clearQueue("sword");
 db.exec("DELETE FROM meta WHERE key IN ('active_mode','queue_open','queue_opened_at','panels')");
