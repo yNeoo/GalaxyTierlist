@@ -46,7 +46,7 @@ getQueue("sword", 5).forEach((r, i) => console.log(`  ${i + 1}. ${r.ign} (${r.re
 
 console.log("\n== API ==");
 console.log("mode/list  ->", (await get("/api/mode/list")).body.map((m) => m.key).join(", "));
-console.log("tiers      ->", (await get("/api/tiers")).body.join(" "));
+console.log("tiers      ->", (await get("/api/tier-list")).body.join(" "));
 const sword = await get("/api/mode/sword");
 console.log("mode/sword ->", Object.entries(sword.body).map(([t, a]) => `${t}:${a.length}`).join(" "));
 console.log("overall    ->", (await get("/api/mode/overall")).body.map((p) => `${p.name}(${p.points})`).join(", "));

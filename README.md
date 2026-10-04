@@ -108,11 +108,11 @@ Un solo embed. Si el `/result` se usa en el canal de resultados no se reenvía (
 | `/leave` | Salir de la cola. |
 
 ### Web
-Se refresca sola cada 15s. Perfil: `/?player=Nombre`. API: `/api/mode/list`, `/api/mode/:gamemode`, `/api/mode/overall`, `/api/queue?mode=:mode`, `/api/profile/:name`.
+Pestañas Overall + Sword, NethOP, CPVP, DiaPot, Mace, Axe. Se refresca sola cada 10s. Diseño base de PVPTIERLIST (KayJss, MIT) adaptado a GalaxyTierlist. API: `/api/tiers` (compat con el frontend), `/api/mode/list`, `/api/mode/:gamemode`, `/api/mode/overall`, `/api/queue?mode=:mode`, `/api/profile/:name`.
 
 ## 5. Tests
 ```bash
-npm test        # valida el panel, botones, orden 1-5 y el embed de ticket
+npm test         # valida bot (panel, botones, resultado, tickets) + web (marca, tabs, /api/tiers)
 npm run test:api # levanta la API, la siembra y la prueba
 ```
 

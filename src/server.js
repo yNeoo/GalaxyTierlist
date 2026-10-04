@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import path from "node:path";
-import { GAMEMODES, TIERS, REGIONS, MAX_QUEUE_SHOWN, MAX_QUEUE_SIZE, modeByKey } from "./config.js";
+import { GAMEMODES, TIERS, REGIONS, MAX_QUEUE_SHOWN, MAX_QUEUE_SIZE, TIER_POINTS, modeByKey } from "./config.js";
 import {
   getRankings, getOverall, getProfile, db,
   getQueue, queueCount, isQueueOpen, getActiveMode, getOpenedAt
@@ -15,7 +15,7 @@ export function createServer() {
 
   // ---- meta del proyecto ----
   app.get("/api/mode/list", (req, res) => res.json(GAMEMODES));
-  app.get("/api/tiers", (req, res) => res.json(TIERS));
+  app.get("/api/tier-list", (req, res) => res.json(TIERS));
   app.get("/api/regions", (req, res) => res.json(REGIONS));
 
   // ---- rankings estilo MCTiers ----
@@ -30,6 +30,28 @@ export function createServer() {
     const { gamemode } = req.params;
     if (!modeByKey(gamemode)) return res.status(404).json({ error: "unknown gamemode" });
     res.json(getRankings(gamemode));
+  });
+
+  // ---- compatibilidad con el frontend (forma { tab: { tier1..tier5 } }) ----
+  // Tier N = HTN + LTN; el frontend calcula el Overall solo con esto.
+  app.get("/api/tiers", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const out = {};
+    for (const g of GAMEMODES) {
+      const rankings = getRankings(g.key);
+      const tab = {};
+      for (let n = 1; n <= 5; n++) {
+        tab[`tier${n}`] = [...(rankings[`HT${n}`] ?? []), ...(rankings[`LT${n}`] ?? [])]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((p) => ({
+            name: p.name,
+            badges: [p.tier.toLowerCase()],
+            points: TIER_POINTS[p.tier] ?? 0,
+          }));
+      }
+      out[g.key] = tab;
+    }
+    res.json(out);
   });
 
   // ---- whitelist / cola ----
