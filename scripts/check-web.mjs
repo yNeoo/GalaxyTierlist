@@ -13,7 +13,9 @@ const html = await readFile(new URL("../public/index.html", import.meta.url), "u
 
 // --- marca
 chk(html.includes("<title>GalaxyTierlist</title>"), "titulo GalaxyTierlist");
-chk(!/kayjs/i.test(html), "sin rastro de KayJs");
+const visible = html.replace(/<!--[\s\S]*?-->/g, "");
+chk(!/kayjs/i.test(visible), "sin marca visible de KayJs (el credito va en comentario)");
+chk(/kayjss/i.test(html), "credito al diseno original conservado en comentario");
 chk(!html.includes("localhost:3000"), "sin fetch a localhost (URL relativa)");
 chk(html.includes("fetch('/api/tiers')"), "fetch a /api/tiers relativo");
 
