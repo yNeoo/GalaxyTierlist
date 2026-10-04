@@ -39,18 +39,14 @@ npm start
 Cada modalidad tiene **su propio panel**: puedes tener la de sword y la de nethop abiertas a la vez. `/openqueue` publica el panel si no existe, y si ya existe lo **actualiza** en vez de duplicarlo. `/closequeue modalidad:Sword` cierra esa cola.
 
 ### El panel de la cola
-Un embed por modalidad, estilo GangTiers:
+Un embed por modalidad con nuestro diseño:
 
 ```
-🔮 CRYSTAL - Cola abierta
-Testers
-@Devqd
-Abierta
-Hace 21 minutos
-En espera - 2/15
-1. @Dillom `Dillom` NA
-2. @bawipz `bawipz` NA
-Anotate con Entrar a la cola. Tu posición: /queueinfo
+GalaxyTierlist
+1. `Distraccion` · @user
+2. `Notch` · @user
+3. `Zenith` · @user
+🗡️ Sword  ·  Abierta  ·  3/15 en cola
 ```
 
 Si la cola está vacía, la lista es solo `1 2 3 4 5`. Capacidad: 15 por cola (el 16 no entra).
@@ -60,15 +56,15 @@ Si la cola está vacía, la lista es solo `1 2 3 4 5`. Capacidad: 15 por cola (e
 Botones (solo 3):
 | Boton | Quien | Que hace |
 |---|---|---|
-| **Entrar a la cola** | todos | Entra a la cola. Si no está verificado, se abre el modal de verificación y al terminar entra solo. |
-| **Salir de la cola** | todos | Sale de la cola. |
-| **Abrir ticket** | **solo testers** | Saca al **#1** y le abre un ticket privado. |
+| **Unirse** | todos | Entra a la cola. Si no está verificado, se abre el modal de verificación y al terminar entra solo. |
+| **Salir** | todos | Sale de la cola. |
+| **Ticket** | **solo testers** | Saca al **#1** y le abre un ticket privado. |
 
-Los jugadores que no son testers solo ven `Entrar a la cola` y `Salir de la cola`: el panel se re-renderiza según quién pulse.
+Los jugadores que no son testers solo ven `Unirse` y `Salir`: el panel se re-renderiza según quién pulse.
 
 ### El flujo
-1. Jugador pulsa **Entrar a la cola**. Si no está verificado, el bot abre el modal (IGN + región) y valida el IGN contra la API de Mojang. Al confirmar, **entra directo a la cola** en el puesto que le toque. Su puesto exacto lo ve con `/queueinfo`.
-2. Un tester pulsa **Abrir ticket** → se crea el canal `test-<modo>-<ign>` dentro de la **categoría de test** (`TICKET_CATEGORY_ID`, por defecto `1555453253984981103`), privado para el jugador y el tester, y se le envía:
+1. Jugador pulsa **Unirse**. Si no está verificado, el bot abre el modal (IGN + región) y valida el IGN contra la API de Mojang. Al confirmar, **entra directo a la cola** en el puesto que le toque. Su puesto exacto lo ve con `/queueinfo`.
+2. Un tester pulsa **Ticket** → se crea el canal `test-<modo>-<ign>` dentro de la **categoría de test** (`TICKET_CATEGORY_ID`, por defecto `1555453253984981103`), privado para el jugador y el tester, y se le envía:
 
 ```
 GalaxyTiers

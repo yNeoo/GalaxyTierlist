@@ -13,7 +13,7 @@ import {
   db, upsertPlayer, logTest, getProfile, getCurrentTier,
   getQueue, queueCount, addToQueue, removeFromQueue, popQueue,
   getPlayerByDiscord, getOpenStates, setQueueOpen, isQueueOpen,
-  getOpenedAt, getActiveMode, setActiveMode,
+  getActiveMode, setActiveMode,
   getPanelFor, setPanelFor, getAllPanels, getUserQueues
 } from "./db.js";
 
@@ -54,56 +54,46 @@ async function mojangUUID(ign) {
 // Hay un panel por modalidad: cada /openqueue publica el suyo y varios
 // pueden estar abiertos a la vez (uno de sword, otro de nethop, etc).
 
-/** Menciones de testers activos para el campo "Testers" del panel. */
-function testersLine() {
-  const ids = [...new Set([...activeTesters, ...testerIds])];
-  return ids.length ? ids.map((id) => `<@${id}>`).join(" ") : "—";
-}
-
 export function queuePayload(userId = null, mode = null) {
   const key = mode ?? getActiveMode();
   const g = modeByKey(key);
   const open = isQueueOpen(key);
   const rows = getQueue(key);
   const shown = rows.slice(0, MAX_QUEUE_SHOWN);
-  const openedAt = getOpenedAt(key);
 
-  const lista = shown.length
+  const desc = shown.length
     ? shown
         .map((r, i) => {
           const who = r.discord_id ? `<@${r.discord_id}>` : (r.tag ? `\`${r.tag}\`` : "—");
-          return `${i + 1}. ${who} \`${r.ign}\` ${r.region ?? ""}`.trim();
+          return `**${i + 1}.** \`${r.ign}\` · ${who}`;
         })
         .join("\n")
     : [1, 2, 3, 4, 5].join("\n");
 
   const embed = new EmbedBuilder()
-    .setTitle(`${g.icon} ${g.name.toUpperCase()} - Cola ${open ? "abierta" : "cerrada"}`)
-    .addFields(
-      { name: "Testers", value: testersLine() },
-      {
-        name: open ? "Abierta" : "Cerrada",
-        value: open && openedAt ? `<t:${Math.floor(openedAt / 1000)}:R>` : "—",
-      },
-      {
-        name: `En espera - ${rows.length}/${MAX_QUEUE_SIZE}`,
-        value:
-          lista +
-          (rows.length > MAX_QUEUE_SHOWN ? `\n+${rows.length - MAX_QUEUE_SHOWN} mas en cola` : ""),
-      }
-    )
+    .setTitle("GalaxyTierlist")
+    .setDescription(desc)
     .setColor(open ? 0x7c3aed : 0x4b5563)
-    .setFooter({ text: "Anotate con Entrar a la cola. Tu posición: /queueinfo" });
+    .setFooter({
+      text: [
+        `${g.icon} ${g.name}`,
+        open ? "Abierta" : "Cerrada",
+        `${rows.length}/${MAX_QUEUE_SIZE} en cola`,
+        rows.length > MAX_QUEUE_SHOWN ? `+${rows.length - MAX_QUEUE_SHOWN} mas` : null,
+      ]
+        .filter(Boolean)
+        .join("  ·  "),
+    });
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`q:join:${key}`).setLabel("Entrar a la cola").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`q:leave:${key}`).setLabel("Salir de la cola").setStyle(ButtonStyle.Danger)
+    new ButtonBuilder().setCustomId(`q:join:${key}`).setLabel("Unirse").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`q:leave:${key}`).setLabel("Salir").setStyle(ButtonStyle.Secondary)
   );
 
-  // Abrir ticket solo para testers.
+  // Ticket solo para testers.
   if (!userId || testerIds.has(userId) || activeTesters.has(userId)) {
     row.addComponents(
-      new ButtonBuilder().setCustomId(`q:ticket:${key}`).setLabel("Abrir ticket").setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId(`q:ticket:${key}`).setLabel("Ticket").setStyle(ButtonStyle.Danger)
     );
   }
 
@@ -520,9 +510,9 @@ async function handleSelect(it) {
   setActiveMode(it.values[0]);
   setQueueOpen(it.values[0], true);
   const msg = await publishPanel(it, it.values[0]);
-  const ping = WAITLIST_ROLE_ID ? `<@&${WAITLIST_ROLE_ID}> | Waitlist ${g.name} — ` : "";
+  const ping = WAITLIST_ROLE_ID ? `<@&${WAITLIST_ROLE_ID}> ` : "";
   await it.channel
-    .send(`🔔 ${ping}**${g.name.toUpperCase()}** queue is now open!`)
+    .send(`🔔 ${ping}Cola de **${g.icon} ${g.name}** abierta.`)
     .catch(() => {});
   return it.update({
     content:
@@ -543,10 +533,10 @@ async function openQueue(it, modeKey) {
   setQueueOpen(modeKey, true);
   const msg = await publishPanel(it, modeKey);
 
-  // Aviso estilo "CRYSTAL queue is now open!", con mencion al rol de waitlist si hay.
-  const ping = WAITLIST_ROLE_ID ? `<@&${WAITLIST_ROLE_ID}> | Waitlist ${g.name} — ` : "";
+  // Aviso en el canal, con mencion al rol de waitlist si hay.
+  const ping = WAITLIST_ROLE_ID ? `<@&${WAITLIST_ROLE_ID}> ` : "";
   await it.channel
-    .send(`🔔 ${ping}**${g.name.toUpperCase()}** queue is now open!`)
+    .send(`🔔 ${ping}Cola de **${g.icon} ${g.name}** abierta.`)
     .catch(() => {});
 
   return it.reply({
