@@ -24,7 +24,7 @@ npm start
 ## 3. Subir a GitHub y Render
 1. Sube solo la carpeta `galaxytierlist/` a un repo GitHub.
 2. En render.com → New → Blueprint → conecta el repo (usa `render.yaml`).
-3. En Environment agrega: DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID, RESULTS_CHANNEL_ID.
+3. En Render → Environment agrega: `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_GUILD_ID`, `RESULTS_CHANNEL_ID` y `TICKET_CATEGORY_ID`.
 4. Deploy. Te da URL tipo `https://galaxytierlist.onrender.com`.
 
 ## 4. Uso — cola y resultados
@@ -51,6 +51,10 @@ GalaxyTierlist
 🗡️ Sword · Abierta · 7 en cola · +2 mas
 ```
 
+Si la cola está vacía, la descripción es solo `1 2 3 4 5`.
+
+**El panel nunca se substituye.** Es un mensaje compartido: al pulsar `Unirse`, `Salir` o `Ticket` la confirmación llega **efímera** (solo la ve quien pulsó) y el panel se refresca aparte con las posiciones nuevas.
+
 Botones (solo 3):
 | Boton | Quien | Que hace |
 |---|---|---|
@@ -62,7 +66,7 @@ Los jugadores que no son testers solo ven `Unirse` y `Salir`: el panel se re-ren
 
 ### El flujo
 1. Jugador pulsa **Unirse**. Si no está verificado, el bot abre el modal (IGN + región) y valida el IGN contra la API de Mojang. Al confirmar, **entra directo a la cola** en el puesto que le toque.
-2. Un tester pulsa **Ticket** → se crea el canal `test-<modo>-<ign>` (privado) y se le envía:
+2. Un tester pulsa **Ticket** → se crea el canal `test-<modo>-<ign>` dentro de la **categoría de test** (`TICKET_CATEGORY_ID`, por defecto `1555453253984981103`), privado para el jugador y el tester, y se le envía:
 
 ```
 GalaxyTiers

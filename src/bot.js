@@ -20,6 +20,8 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const GUILD_ID = process.env.DISCORD_GUILD_ID;
 const RESULTS_CHANNEL_ID = process.env.RESULTS_CHANNEL_ID || "";
+// Categoria donde se abren los tickets de test.
+const TICKET_CATEGORY_ID = process.env.TICKET_CATEGORY_ID || "1555453253984981103";
 
 const activeTesters = new Set(); // /start -> tester activo esta sesion
 const testerIds = new Set();      // vista con el boton Ticket
@@ -60,7 +62,7 @@ export function queuePayload(userId = null) {
           return `**${i + 1}.** \`${r.ign}\` · ${who}`;
         })
         .join("\n")
-    : "```\n1\n2\n3\n4\n5\n```";
+    : [1, 2, 3, 4, 5].join("\n");
 
   const embed = new EmbedBuilder()
     .setTitle("GalaxyTierlist")
@@ -114,12 +116,12 @@ async function publishPanel(interaction) {
   return msg;
 }
 
-async function respondAs(interaction, extra = {}) {
-  const onPanel = interaction.channelId && getPanel()?.messageId === interaction.message?.id;
-  const payload = { ...queuePayload(interaction.user.id), ...extra };
-  return onPanel
-    ? interaction.update(payload).catch(() => {})
-    : interaction.reply(payload).catch(() => {});
+/**
+ * El panel es un mensaje compartido: nunca se substituye con una confirmacion.
+ * El feedback va efimero (solo lo ve quien pulso) y el panel se refresca aparte.
+ */
+async function respondEphemeral(interaction, extra = {}) {
+  return interaction.reply({ ephemeral: true, ...extra }).catch(() => {});
 }
 
 // ------------------------------------------------------------------ startup
@@ -324,7 +326,7 @@ async function enqueue(it, ign, region, trasModal = false) {
     .setFooter({ text: "Un tester abrira tu ticket." });
 
   if (trasModal) return it.reply({ embeds: [embed], ephemeral: true });
-  return respondAs(it, { embeds: [embed], components: queuePayload(it.user.id).components });
+  return respondEphemeral(it, { embeds: [embed] });
 }
 
 async function handleLeave(it) {
@@ -341,7 +343,7 @@ async function handleLeave(it) {
     )
     .setColor(0x9aa4b2);
 
-  return respondAs(it, { embeds: [embed], components: queuePayload(it.user.id).components });
+  return respondEphemeral(it, { embeds: [embed] });
 }
 
 // -------------------------------------------------------------- embed ticket
@@ -394,7 +396,8 @@ async function popAndOpenTicket(it, mode) {
       topic: `Test de ${row.ign} — ${g.name}`,
       reason: "GalaxyTierlist ticket",
       permissionOverwrites: overwrites,
-      ...(RESULTS_CHANNEL_ID ? { parent: RESULTS_CHANNEL_ID } : {}),
+      // Los tickets cuelgan de la categoria de test, no del canal de resultados.
+      ...(TICKET_CATEGORY_ID ? { parent: TICKET_CATEGORY_ID } : {}),
     });
   } catch (e) {
     console.error("[bot] no se pudo crear el ticket:", e.message);
@@ -423,7 +426,7 @@ async function handleTicket(it) {
   const res = await popAndOpenTicket(it, mode);
   if (res.error) return it.reply({ content: res.error, ephemeral: true });
 
-  return respondAs(it, {
+  return respondEphemeral(it, {
     embeds: [
       new EmbedBuilder()
         .setTitle("Ticket abierto")
@@ -433,7 +436,6 @@ async function handleTicket(it) {
         )
         .setColor(0x22c55e),
     ],
-    components: queuePayload(it.user.id).components,
   });
 }
 

@@ -1,5 +1,6 @@
 // Verifica el panel de cola, el embed de resultado con skin y el de ticket.
 //   node scripts/check-embeds.mjs
+import { readFile } from "node:fs/promises";
 import { queuePayload, ticketEmbed, resultEmbed } from "../src/bot.js";
 import { addToQueue, setActiveMode, setQueueOpen, clearQueue, upsertPlayer, db } from "../src/db.js";
 import { skinUrl } from "../src/config.js";
@@ -23,7 +24,7 @@ clearQueue("sword");
 let p = ser(queuePayload(null));
 console.log("\n=== PANEL DE COLA (vacia) ===");
 line(`titulo : ${p.embeds[0].title}`);
-line("desc   : " + p.embeds[0].description.replace(/\n/g, " | "));
+line("desc   : " + JSON.stringify(p.embeds[0].description));
 line("pie    : " + p.embeds[0].footer.text);
 line("botones: " + p.buttons.map((b) => `${b.label}->${b.custom_id}`).join(", "));
 chk(p.embeds[0].title === "GalaxyTierlist", 'titulo "GalaxyTierlist"');
@@ -31,6 +32,8 @@ chk(p.buttons.length === 3, "3 botones: Unirse, Salir, Ticket");
 chk(p.buttons.map((b) => b.label).join(",") === "Unirse,Salir,Ticket", "orden Unirse, Salir, Ticket");
 chk(!p.buttons.some((b) => b.custom_id === "q:verify"), "ya NO hay boton Verify en el panel");
 chk(!p.buttons.some((b) => b.custom_id === "q:open"), "ya NO hay boton Open en el panel");
+chk(!p.embeds[0].description.includes("```"), 'sin bloque de codigo (el "cuadrado")');
+chk(p.embeds[0].description.trim() === "1\n2\n3\n4\n5", "vacia = solo los numeros 1-5");
 
 // ───────────────────────────── panel con 7 en cola -> muestra 1..5
 clearQueue("sword");
@@ -124,6 +127,44 @@ chk(t.description.includes("<@123>"), "tester asignado");
 chk(t.description.includes("NethOP"), "modalidad de la cola");
 chk(/no seas toxico/i.test(t.description), "aviso toxico");
 chk(/paciencia/i.test(t.description) && /1m-2m/.test(t.description), "aviso paciencia 1m-2m");
+
+// ───────────────────────────── el panel nunca se substituye
+// (bug: al pulsar Unirse se hacia interaction.update() y el panel se
+//  substituia por el embed de confirmacion)
+console.log("\n=== el panel no se substituye al unirse ===");
+const src = await readFile(new URL("../src/bot.js", import.meta.url), "utf8");
+const cuerpoEnqueue = src.slice(
+  src.indexOf("async function enqueue"),
+  src.indexOf("async function handleLeave")
+);
+chk(!cuerpoEnqueue.includes("interaction.update("), "enqueue no llama interaction.update");
+chk(!cuerpoEnqueue.includes("it.update("), "enqueue no llama it.update");
+chk(!cuerpoEnqueue.includes("respondAs"), "enqueue ya no usa respondAs");
+chk(cuerpoEnqueue.includes("ephemeral: true"), "enqueue responde efimero");
+chk(cuerpoEnqueue.includes("refreshPanel"), "enqueue refresca el panel por separado");
+
+const cuerpoTicket = src.slice(
+  src.indexOf("async function handleTicket"),
+  src.indexOf("// ------------------------------------------------------------------ select")
+);
+chk(!cuerpoTicket.includes("it.update("), "handleTicket no llama it.update");
+
+// solo el selector de modalidad puede reescribir su propia respuesta efimera
+const updates = src.match(/\bit\.update\(/g) ?? [];
+chk(updates.length === 1, `it.update aparece 1 vez (el selector), hay ${updates.length}`);
+chk(!src.includes("respondAs"), "respondAs ya no existe en el codigo");
+
+console.log("\n=== categoria de los tickets ===");
+chk(
+  /TICKET_CATEGORY_ID = process\.env\.TICKET_CATEGORY_ID \|\| "1555453253984981103"/.test(src),
+  "TICKET_CATEGORY_ID por defecto = 1555453253984981103"
+);
+const cuerpoPop = src.slice(
+  src.indexOf("async function popAndOpenTicket"),
+  src.indexOf("async function handleTicket")
+);
+chk(cuerpoPop.includes("parent: TICKET_CATEGORY_ID"), "el ticket cuelga de TICKET_CATEGORY_ID");
+chk(!cuerpoPop.includes("parent: RESULTS_CHANNEL_ID"), "ya NO cuelga del canal de resultados");
 
 clearQueue("sword");
 db.exec("DELETE FROM meta WHERE key='active_mode'");

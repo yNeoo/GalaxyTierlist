@@ -14,3 +14,5 @@ services:
         sync: false
       - key: RESULTS_CHANNEL_ID
         sync: false
+      - key: TICKET_CATEGORY_ID
+        sync: false
